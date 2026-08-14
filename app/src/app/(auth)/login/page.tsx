@@ -133,7 +133,7 @@ export default function LoginPage() {
       {/* Brand Header with Official Logo */}
       <div className="text-center mb-6">
         <div className="relative inline-block w-16 h-16 rounded-full overflow-hidden border-2 border-[#2D6A4F]/30 shadow-sm mb-3">
-          <Image src="/icon-192.png" alt="ACS Logo" fill className="object-cover" priority />
+          <Image src="/icon-192.png" alt="ACS Logo" fill sizes="64px" className="object-cover" priority />
         </div>
         <h1 className="text-2xl font-extrabold text-[#1B4332] tracking-tight">Alienista</h1>
         <p className="text-xs text-[#2D6A4F] font-semibold uppercase tracking-wider mt-1">

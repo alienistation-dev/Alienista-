@@ -37,7 +37,7 @@ export function Sidebar({ user }: { user: SessionUser }) {
       {/* Brand Header */}
       <div className="h-16 px-6 flex items-center gap-3 border-b border-[#E5EBE5]">
         <div className="relative w-9 h-9 rounded-full overflow-hidden border border-emerald-800/20 shadow-xs shrink-0">
-          <Image src="/icon-192.png" alt="ACS Logo" fill className="object-cover" />
+          <Image src="/icon-192.png" alt="ACS Logo" fill sizes="36px" className="object-cover" />
         </div>
         <div>
           <div className="font-extrabold text-base text-[#1B4332] tracking-tight leading-tight">Alienista</div>

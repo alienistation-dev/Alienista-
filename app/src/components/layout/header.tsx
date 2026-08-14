@@ -40,7 +40,7 @@ export function Header({ user, academicYear = '2026-2027', semester = 'First Sem
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2.5 md:hidden">
           <div className="relative w-8 h-8 rounded-full overflow-hidden border border-emerald-700/20 shadow-xs">
-            <Image src="/icon-192.png" alt="ACS Logo" fill className="object-cover" />
+            <Image src="/icon-192.png" alt="ACS Logo" fill sizes="32px" className="object-cover" />
           </div>
           <div>
             <span className="font-extrabold text-base tracking-tight text-[#1B4332]">Alienista</span>
