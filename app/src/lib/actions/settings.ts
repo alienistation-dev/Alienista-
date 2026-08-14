@@ -1,7 +1,7 @@
 'use server';
 
 import bcrypt from 'bcryptjs';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/session';
 import { ActionResponse } from '@/lib/types/actions';
 import { Officer, OrganizationSettings, YearLevel } from '@/lib/types/models';
@@ -24,18 +24,19 @@ export async function getSettingsDataAction(): Promise<
   const user = await getSessionUser();
   if (!user || user.role !== 'admin') return { success: false, error: 'Unauthorized.' };
 
+  const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
 
   const { data: settings } = await admin
     .from('organization_settings')
     .select('*')
-    .eq('organization_id', user.organization_id)
-    .single();
+    .eq('organization_id', orgId)
+    .maybeSingle();
 
   const { data: officers } = await admin
     .from('officers')
     .select('id, organization_id, name, status, created_at, updated_at')
-    .eq('organization_id', user.organization_id)
+    .eq('organization_id', orgId)
     .order('name', { ascending: true });
 
   return {
@@ -43,7 +44,7 @@ export async function getSettingsDataAction(): Promise<
     data: {
       settings: settings || {
         id: '',
-        organization_id: user.organization_id,
+        organization_id: orgId,
         academic_year: '2026-2027',
         semester: 'First Semester',
         admin_username: 'admin',
@@ -65,12 +66,13 @@ export async function updateAdminCredentialsAction(input: {
   const { currentPassword, newUsername, newPassword } = input;
   if (!currentPassword) return { success: false, error: 'Current password is required.' };
 
+  const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
   const { data: settings } = await admin
     .from('organization_settings')
     .select('*')
-    .eq('organization_id', user.organization_id)
-    .single();
+    .eq('organization_id', orgId)
+    .maybeSingle();
 
   if (!settings) return { success: false, error: 'Settings record not found.' };
 
@@ -117,13 +119,14 @@ export async function addOfficerAction(name: string, pin: string): Promise<Actio
   if (!name.trim() || !pin.trim()) return { success: false, error: 'Name and PIN are required.' };
   if (pin.trim().length < 4) return { success: false, error: 'PIN must be at least 4 digits.' };
 
+  const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
   const pinHash = await bcrypt.hash(pin.trim(), 10);
 
   const { data, error } = await admin
     .from('officers')
     .insert({
-      organization_id: user.organization_id,
+      organization_id: orgId,
       name: name.trim(),
       pin_hash: pinHash,
       status: 'Active',
@@ -146,6 +149,7 @@ export async function resetOfficerPinAction(officerId: string, newPin: string): 
 
   if (newPin.trim().length < 4) return { success: false, error: 'PIN must be at least 4 digits.' };
 
+  const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
   const pinHash = await bcrypt.hash(newPin.trim(), 10);
 
@@ -153,7 +157,7 @@ export async function resetOfficerPinAction(officerId: string, newPin: string): 
     .from('officers')
     .update({ pin_hash: pinHash })
     .eq('id', officerId)
-    .eq('organization_id', user.organization_id);
+    .eq('organization_id', orgId);
 
   if (error) return { success: false, error: error.message };
   revalidatePath('/settings');
@@ -164,12 +168,13 @@ export async function deleteOfficerAction(officerId: string): Promise<ActionResp
   const user = await getSessionUser();
   if (!user || user.role !== 'admin') return { success: false, error: 'Unauthorized.' };
 
+  const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
   const { error } = await admin
     .from('officers')
     .delete()
     .eq('id', officerId)
-    .eq('organization_id', user.organization_id);
+    .eq('organization_id', orgId);
 
   if (error) return { success: false, error: error.message };
   revalidatePath('/settings');
@@ -180,13 +185,14 @@ export async function advanceSemesterAction(): Promise<ActionResponse<{ message:
   const user = await getSessionUser();
   if (!user || user.role !== 'admin') return { success: false, error: 'Unauthorized.' };
 
+  const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
 
   const { data: settings } = await admin
     .from('organization_settings')
     .select('*')
-    .eq('organization_id', user.organization_id)
-    .single();
+    .eq('organization_id', orgId)
+    .maybeSingle();
 
   if (!settings) return { success: false, error: 'Settings not found.' };
 
@@ -209,7 +215,7 @@ export async function advanceSemesterAction(): Promise<ActionResponse<{ message:
   const { data: students } = await admin
     .from('students')
     .select('id, year, status')
-    .eq('organization_id', user.organization_id)
+    .eq('organization_id', orgId)
     .eq('status', 'Active');
 
   if (students && students.length > 0) {

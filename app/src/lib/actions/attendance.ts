@@ -1,6 +1,6 @@
 'use server';
 
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/session';
 import { ActionResponse } from '@/lib/types/actions';
 
@@ -14,6 +14,7 @@ export async function recordScanAction(input: {
   const user = await getSessionUser();
   if (!user) return { success: false, error: 'Unauthorized.' };
 
+  const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
   const scanTime = input.timestamp ? new Date(input.timestamp) : new Date();
 
@@ -22,7 +23,7 @@ export async function recordScanAction(input: {
     .from('students')
     .select('id, full_name, status')
     .eq('uid', input.student_uid.trim())
-    .eq('organization_id', user.organization_id)
+    .eq('organization_id', orgId)
     .single();
 
   if (!student) return { success: false, error: 'Student UID not found.' };
@@ -33,7 +34,7 @@ export async function recordScanAction(input: {
     .from('events')
     .select('id, name, status, slots:event_slots(*)')
     .eq('id', input.event_id)
-    .eq('organization_id', user.organization_id)
+    .eq('organization_id', orgId)
     .single();
 
   if (!event) return { success: false, error: 'Event not found.' };
@@ -55,13 +56,19 @@ export async function recordScanAction(input: {
   }
 
   // 4. Duplicate Check
-  const { data: existing } = await admin
+  let query = admin
     .from('attendance_records')
     .select('id')
     .eq('student_id', student.id)
-    .eq('event_id', event.id)
-    .eq('slot_id', activeSlotId || '00000000-0000-0000-0000-000000000000')
-    .maybeSingle();
+    .eq('event_id', event.id);
+
+  if (activeSlotId) {
+    query = query.eq('slot_id', activeSlotId);
+  } else {
+    query = query.is('slot_id', null);
+  }
+
+  const { data: existing } = await query.maybeSingle();
 
   if (existing) {
     return { success: false, error: 'Already scanned for this session.', code: 'DUPLICATE' };
@@ -69,7 +76,7 @@ export async function recordScanAction(input: {
 
   // 5. Insert Attendance
   const { error: insertErr } = await admin.from('attendance_records').insert({
-    organization_id: user.organization_id,
+    organization_id: orgId,
     student_id: student.id,
     event_id: event.id,
     slot_id: activeSlotId,
@@ -119,9 +126,10 @@ export async function manualAttendanceOverrideAction(input: {
   const user = await getSessionUser();
   if (!user || user.role !== 'admin') return { success: false, error: 'Only admins can perform manual override.' };
 
+  const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
   const { error } = await admin.from('attendance_records').insert({
-    organization_id: user.organization_id,
+    organization_id: orgId,
     student_id: input.student_id,
     event_id: input.event_id,
     slot_id: input.slot_id || null,

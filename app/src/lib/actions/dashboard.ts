@@ -1,6 +1,6 @@
 'use server';
 
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/session';
 import { ActionResponse } from '@/lib/types/actions';
 import { DashboardStats, Event } from '@/lib/types/models';
@@ -13,13 +13,14 @@ export async function getDashboardDataAction(): Promise<ActionResponse<{
   const user = await getSessionUser();
   if (!user) return { success: false, error: 'Unauthorized' };
 
+  const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
 
   // 1. Fetch aggregate metrics
   const { data: statsRow } = await admin
     .from('v_dashboard_stats')
     .select('*')
-    .eq('organization_id', user.organization_id)
+    .eq('organization_id', orgId)
     .maybeSingle();
 
   const stats: DashboardStats = {
@@ -35,14 +36,14 @@ export async function getDashboardDataAction(): Promise<ActionResponse<{
   const { data: events } = await admin
     .from('events')
     .select('*')
-    .eq('organization_id', user.organization_id)
+    .eq('organization_id', orgId)
     .order('starts_at', { ascending: false });
 
   // 3. Fetch recent attendance
   const { data: recentAttendance } = await admin
     .from('v_attendance_details')
     .select('*')
-    .eq('organization_id', user.organization_id)
+    .eq('organization_id', orgId)
     .order('recorded_at', { ascending: false })
     .limit(10);
 

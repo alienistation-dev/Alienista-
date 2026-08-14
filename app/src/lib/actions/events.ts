@@ -1,6 +1,6 @@
 'use server';
 
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/session';
 import { ActionResponse } from '@/lib/types/actions';
 import { Event } from '@/lib/types/models';
@@ -11,11 +11,12 @@ export async function getEventsAction(): Promise<ActionResponse<Event[]>> {
   const user = await getSessionUser();
   if (!user) return { success: false, error: 'Unauthorized' };
 
+  const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('events')
     .select('*, slots:event_slots(*)')
-    .eq('organization_id', user.organization_id)
+    .eq('organization_id', orgId)
     .order('starts_at', { ascending: false });
 
   if (error) return { success: false, error: error.message };
@@ -29,18 +30,19 @@ export async function createEventWithSlotsAction(rawInput: unknown): Promise<Act
   const parsed = eventSchema.safeParse(rawInput);
   if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
 
+  const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
 
   const { data: event, error: eventErr } = await admin
     .from('events')
     .insert({
-      organization_id: user.organization_id,
+      organization_id: orgId,
       name: parsed.data.name.trim(),
       starts_at: parsed.data.starts_at,
       venue: parsed.data.venue.trim(),
       description: parsed.data.description || '',
       status: parsed.data.status,
-      created_by_officer_id: user.id,
+      created_by_officer_id: user.id.startsWith('admin') ? null : user.id,
     })
     .select()
     .single();
@@ -49,7 +51,7 @@ export async function createEventWithSlotsAction(rawInput: unknown): Promise<Act
 
   if (parsed.data.slots && parsed.data.slots.length > 0) {
     const slotInserts = parsed.data.slots.map((s) => ({
-      organization_id: user.organization_id,
+      organization_id: orgId,
       event_id: event.id,
       label: s.label,
       slot_type: s.slot_type,
@@ -68,12 +70,13 @@ export async function toggleEventStatusAction(id: string, newStatus: 'Open' | 'C
   const user = await getSessionUser();
   if (!user || user.role !== 'admin') return { success: false, error: 'Unauthorized.' };
 
+  const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
   const { error } = await admin
     .from('events')
     .update({ status: newStatus })
     .eq('id', id)
-    .eq('organization_id', user.organization_id);
+    .eq('organization_id', orgId);
 
   if (error) return { success: false, error: error.message };
   revalidatePath('/events');
@@ -84,12 +87,13 @@ export async function deleteEventAction(id: string): Promise<ActionResponse> {
   const user = await getSessionUser();
   if (!user || user.role !== 'admin') return { success: false, error: 'Unauthorized.' };
 
+  const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
   const { error } = await admin
     .from('events')
     .delete()
     .eq('id', id)
-    .eq('organization_id', user.organization_id);
+    .eq('organization_id', orgId);
 
   if (error) return { success: false, error: error.message };
   revalidatePath('/events');

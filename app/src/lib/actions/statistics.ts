@@ -1,6 +1,6 @@
 'use server';
 
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/session';
 import { ActionResponse } from '@/lib/types/actions';
 
@@ -15,26 +15,27 @@ export async function getStatisticsAction(): Promise<ActionResponse<StatisticsDa
   const user = await getSessionUser();
   if (!user) return { success: false, error: 'Unauthorized' };
 
+  const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
 
   // 1. All Attendance Records
   const { data: logs } = await admin
     .from('v_attendance_details')
     .select('*')
-    .eq('organization_id', user.organization_id)
+    .eq('organization_id', orgId)
     .order('recorded_at', { ascending: false });
 
   // 2. All Events
   const { data: events } = await admin
     .from('events')
     .select('id, name')
-    .eq('organization_id', user.organization_id);
+    .eq('organization_id', orgId);
 
   // 3. Active Students
   const { data: students } = await admin
     .from('students')
     .select('id, uid, full_name, year, status')
-    .eq('organization_id', user.organization_id)
+    .eq('organization_id', orgId)
     .eq('status', 'Active');
 
   const totalActive = students?.length || 1;

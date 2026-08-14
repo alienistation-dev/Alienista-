@@ -1,7 +1,7 @@
 'use server';
 
 import bcrypt from 'bcryptjs';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/session';
 import { ActionResponse } from '@/lib/types/actions';
 import { Student } from '@/lib/types/models';
@@ -12,11 +12,12 @@ export async function getStudentsAction(): Promise<ActionResponse<Student[]>> {
   const user = await getSessionUser();
   if (!user) return { success: false, error: 'Unauthorized' };
 
+  const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('students')
     .select('*')
-    .eq('organization_id', user.organization_id)
+    .eq('organization_id', orgId)
     .order('full_name', { ascending: true });
 
   if (error) return { success: false, error: error.message };
@@ -30,6 +31,7 @@ export async function createStudentAction(rawInput: unknown): Promise<ActionResp
   const parsed = studentSchema.safeParse(rawInput);
   if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
 
+  const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
   const defaultPass = (parsed.data.full_name.trim().split(' ').pop() || 'STUDENT').toUpperCase();
   const passHash = await bcrypt.hash(defaultPass, 10);
@@ -37,7 +39,7 @@ export async function createStudentAction(rawInput: unknown): Promise<ActionResp
   const { data, error } = await admin
     .from('students')
     .insert({
-      organization_id: user.organization_id,
+      organization_id: orgId,
       uid: parsed.data.uid.trim(),
       student_number: parsed.data.student_number.trim(),
       full_name: parsed.data.full_name.trim(),
@@ -69,6 +71,7 @@ export async function updateStudentAction(id: string, rawInput: unknown): Promis
   const parsed = studentSchema.safeParse(rawInput);
   if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
 
+  const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
   const { error } = await admin
     .from('students')
@@ -82,7 +85,7 @@ export async function updateStudentAction(id: string, rawInput: unknown): Promis
       status: parsed.data.status,
     })
     .eq('id', id)
-    .eq('organization_id', user.organization_id);
+    .eq('organization_id', orgId);
 
   if (error) return { success: false, error: error.message };
   revalidatePath('/students');
@@ -93,12 +96,13 @@ export async function deleteStudentAction(id: string): Promise<ActionResponse> {
   const user = await getSessionUser();
   if (!user || user.role !== 'admin') return { success: false, error: 'Unauthorized.' };
 
+  const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
   const { error } = await admin
     .from('students')
     .delete()
     .eq('id', id)
-    .eq('organization_id', user.organization_id);
+    .eq('organization_id', orgId);
 
   if (error) return { success: false, error: error.message };
   revalidatePath('/students');
@@ -109,12 +113,13 @@ export async function resetStudentPasswordAction(id: string): Promise<ActionResp
   const user = await getSessionUser();
   if (!user || user.role !== 'admin') return { success: false, error: 'Unauthorized.' };
 
+  const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
   const { data: student } = await admin
     .from('students')
     .select('id, full_name, last_name')
     .eq('id', id)
-    .eq('organization_id', user.organization_id)
+    .eq('organization_id', orgId)
     .single();
 
   if (!student) return { success: false, error: 'Student not found.' };
@@ -149,6 +154,7 @@ export async function bulkImportStudentsCsvAction(
   const user = await getSessionUser();
   if (!user || user.role !== 'admin') return { success: false, error: 'Unauthorized.' };
 
+  const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
   let imported = 0;
   let failed = 0;
@@ -159,7 +165,7 @@ export async function bulkImportStudentsCsvAction(
     const passHash = await bcrypt.hash(defaultPass, 10);
 
     const { error } = await admin.from('students').insert({
-      organization_id: user.organization_id,
+      organization_id: orgId,
       uid: row.uid.trim(),
       student_number: row.student_number.trim(),
       full_name: row.full_name.trim(),

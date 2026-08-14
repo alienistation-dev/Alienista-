@@ -1,7 +1,7 @@
 'use server';
 
 import bcrypt from 'bcryptjs';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
 import { setSessionCookie, clearSessionCookie } from '@/lib/session';
 import { loginSchema, changePasswordSchema } from '@/lib/validations/auth';
 import { ActionResponse, SessionUser } from '@/lib/types/actions';
@@ -46,7 +46,7 @@ export async function loginAction(rawInput: unknown): Promise<ActionResponse<Ses
       .from('organization_settings')
       .select('id, organization_id, admin_username, admin_password_hash')
       .limit(1)
-      .single();
+      .maybeSingle();
 
     const expectedUsername = (settings?.admin_username || 'admin').trim().toLowerCase();
     const inputUsername = identifier.trim().toLowerCase();
@@ -71,9 +71,11 @@ export async function loginAction(rawInput: unknown): Promise<ActionResponse<Ses
       return { success: false, error: 'Invalid admin username or password.' };
     }
 
+    const orgId = await getEffectiveOrgId(settings?.organization_id);
+
     const sessionUser: SessionUser = {
       id: settings?.id || 'admin_session',
-      organization_id: settings?.organization_id || '',
+      organization_id: orgId,
       role: 'admin',
       name: settings?.admin_username || 'Admin',
     };
@@ -89,7 +91,7 @@ export async function loginAction(rawInput: unknown): Promise<ActionResponse<Ses
       .select('id, organization_id, name, pin_hash, status')
       .ilike('name', identifier.trim())
       .eq('status', 'Active')
-      .single();
+      .maybeSingle();
 
     if (!officer || !officer.pin_hash) {
       recordFailedAttempt(lookupKey);
@@ -102,9 +104,11 @@ export async function loginAction(rawInput: unknown): Promise<ActionResponse<Ses
       return { success: false, error: 'Invalid officer name or PIN.' };
     }
 
+    const orgId = await getEffectiveOrgId(officer.organization_id);
+
     const sessionUser: SessionUser = {
       id: officer.id,
-      organization_id: officer.organization_id,
+      organization_id: orgId,
       role: 'officer',
       name: officer.name,
     };
