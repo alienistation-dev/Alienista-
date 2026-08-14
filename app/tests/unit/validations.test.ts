@@ -72,6 +72,18 @@ describe('Validation Schemas', () => {
       expect(valid.success).toBe(true);
     });
 
+    it('should accept a student record without UID for auto-assignment', () => {
+      const validWithoutUid = studentSchema.safeParse({
+        student_number: '2023-8-0044',
+        full_name: 'Maria Clara',
+        course: 'BS Computer Science',
+        year: '1st Year',
+        section: '2',
+        status: 'Active',
+      });
+      expect(validWithoutUid.success).toBe(true);
+    });
+
     it('should reject invalid year levels', () => {
       const invalid = studentSchema.safeParse({
         uid: 'ST-2026-0001',

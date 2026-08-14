@@ -33,6 +33,40 @@ export async function createStudentAction(rawInput: unknown): Promise<ActionResp
 
   const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
+
+  // Auto-generate incremental UID if omitted or empty (e.g. ST-2026-0001)
+  let finalUid = parsed.data.uid?.trim();
+  if (!finalUid) {
+    const currentYear = new Date().getFullYear();
+    const prefix = `ST-${currentYear}-`;
+    const { data: latestStudents } = await admin
+      .from('students')
+      .select('uid')
+      .eq('organization_id', orgId)
+      .ilike('uid', `${prefix}%`)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    let maxSeq = 0;
+    if (latestStudents && latestStudents.length > 0) {
+      for (const s of latestStudents) {
+        const parts = s.uid.split('-');
+        const num = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(num) && num > maxSeq) {
+          maxSeq = num;
+        }
+      }
+    }
+    if (maxSeq === 0) {
+      const { count } = await admin
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .eq('organization_id', orgId);
+      maxSeq = count || 0;
+    }
+    finalUid = `${prefix}${String(maxSeq + 1).padStart(4, '0')}`;
+  }
+
   const defaultPass = (parsed.data.full_name.trim().split(' ').pop() || 'STUDENT').toUpperCase();
   const passHash = await bcrypt.hash(defaultPass, 10);
 
@@ -40,7 +74,7 @@ export async function createStudentAction(rawInput: unknown): Promise<ActionResp
     .from('students')
     .insert({
       organization_id: orgId,
-      uid: parsed.data.uid.trim(),
+      uid: finalUid,
       student_number: parsed.data.student_number.trim(),
       full_name: parsed.data.full_name.trim(),
       course: parsed.data.course,
@@ -76,7 +110,7 @@ export async function updateStudentAction(id: string, rawInput: unknown): Promis
   const { error } = await admin
     .from('students')
     .update({
-      uid: parsed.data.uid.trim(),
+      ...(parsed.data.uid ? { uid: parsed.data.uid.trim() } : {}),
       student_number: parsed.data.student_number.trim(),
       full_name: parsed.data.full_name.trim(),
       course: parsed.data.course,

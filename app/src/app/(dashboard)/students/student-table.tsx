@@ -451,13 +451,16 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
             </h3>
             <form onSubmit={handleSaveStudent} className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">UID (e.g. ST-2026-0001)</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  {editingStudent ? 'UID (System Identifier)' : 'UID (Optional — Auto-assigned if left blank)'}
+                </label>
                 <input
                   type="text"
-                  required
+                  required={!!editingStudent}
+                  placeholder={editingStudent ? 'e.g. ST-2026-0001' : 'Auto-assigned (e.g. ST-2026-0001)'}
                   value={formData.uid}
                   onChange={(e) => setFormData({ ...formData, uid: e.target.value })}
-                  className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900"
+                  className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#2D6A4F]"
                 />
               </div>
               <div>

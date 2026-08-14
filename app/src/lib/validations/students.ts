@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const studentSchema = z.object({
-  uid: z.string().min(2, 'UID is required'),
+  uid: z.string().optional().or(z.literal('')),
   student_number: z.string().min(2, 'Student Number is required'),
   full_name: z.string().min(2, 'Full Name is required'),
   course: z.string().default('BS Computer Science'),
