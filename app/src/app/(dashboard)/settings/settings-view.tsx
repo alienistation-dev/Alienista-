@@ -7,8 +7,9 @@ import {
   resetOfficerPinAction,
   deleteOfficerAction,
   advanceSemesterAction,
+  updateAdminCredentialsAction,
 } from '@/lib/actions/settings';
-import { Settings, Shield, UserCheck, Plus, Trash2, KeyRound, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Settings, Shield, UserCheck, Plus, Trash2, KeyRound, ArrowRight, Lock, Save } from 'lucide-react';
 
 export function SettingsView({
   initialSettings,
@@ -30,9 +31,39 @@ export function SettingsView({
   const [resetModalOfficer, setResetModalOfficer] = useState<Officer | null>(null);
   const [newPin, setNewPin] = useState('');
 
+  // Admin Credentials Form
+  const [currentAdminPassword, setCurrentAdminPassword] = useState('');
+  const [newAdminUsername, setNewAdminUsername] = useState(settings.admin_username || 'admin');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
+  };
+
+  const handleUpdateAdminCreds = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentAdminPassword) {
+      showToast('Please enter your current admin password to apply changes.', 'err');
+      return;
+    }
+
+    startTransition(async () => {
+      const res = await updateAdminCredentialsAction({
+        currentPassword: currentAdminPassword,
+        newUsername: newAdminUsername,
+        newPassword: newAdminPassword || undefined,
+      });
+
+      if (!res.success) {
+        showToast(res.error, 'err');
+        return;
+      }
+
+      showToast('Admin credentials updated successfully!');
+      setCurrentAdminPassword('');
+      setNewAdminPassword('');
+    });
   };
 
   const handleAddOfficer = (e: React.FormEvent) => {
@@ -110,6 +141,66 @@ export function SettingsView({
           {toast.msg}
         </div>
       )}
+
+      {/* Admin Credentials & Master Login Card */}
+      <div className="p-6 bg-[#151E33] border border-slate-800 rounded-2xl shadow-xl space-y-4">
+        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+          <Shield className="w-4 h-4 text-amber-400" />
+          <span>Admin Master Credentials</span>
+        </h3>
+        <p className="text-xs text-slate-400">
+          Set the shared executive board login credentials (default: <b>admin</b> / <b>admin123</b>).
+        </p>
+
+        <form onSubmit={handleUpdateAdminCreds} className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">Admin Username</label>
+              <input
+                type="text"
+                required
+                value={newAdminUsername}
+                onChange={(e) => setNewAdminUsername(e.target.value)}
+                placeholder="admin"
+                className="w-full bg-[#0B1120] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">New Password (leave blank to keep current)</label>
+              <input
+                type="password"
+                value={newAdminPassword}
+                onChange={(e) => setNewAdminPassword(e.target.value)}
+                placeholder="New password (min 6 chars)"
+                className="w-full bg-[#0B1120] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-amber-400 mb-1">Current Password (required to save changes)</label>
+            <input
+              type="password"
+              required
+              value={currentAdminPassword}
+              onChange={(e) => setCurrentAdminPassword(e.target.value)}
+              placeholder="Current admin password (default: admin123)"
+              className="w-full bg-[#0B1120] border border-amber-500/40 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+            />
+          </div>
+
+          <div className="flex justify-end pt-1">
+            <button
+              type="submit"
+              disabled={isPending}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors shadow-sm"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>Update Credentials</span>
+            </button>
+          </div>
+        </form>
+      </div>
 
       {/* Current Term Card */}
       <div className="p-6 bg-[#151E33] border border-slate-800 rounded-2xl shadow-xl space-y-4">

@@ -4,7 +4,55 @@ import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginAction, changeStudentPasswordAction } from '@/lib/actions/auth';
 import { UserRole } from '@/lib/types/models';
-import { QrCode, Shield, UserCheck, GraduationCap, KeyRound, ArrowRight } from 'lucide-react';
+import { QrCode, Shield, UserCheck, GraduationCap, KeyRound, ArrowRight, Lock, User } from 'lucide-react';
+
+interface RoleConfig {
+  label: string;
+  badge: string;
+  icon: typeof UserCheck;
+  identifierLabel: string;
+  identifierPlaceholder: string;
+  secretLabel: string;
+  secretPlaceholder: string;
+  helperText?: string;
+  buttonLabel: string;
+}
+
+const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
+  officer: {
+    label: 'Officer',
+    badge: 'Scanning Duty',
+    icon: UserCheck,
+    identifierLabel: 'Officer Full Name',
+    identifierPlaceholder: 'e.g. Juan Dela Cruz',
+    secretLabel: '4-Digit PIN',
+    secretPlaceholder: '••••',
+    helperText: 'Enter your authorized executive officer PIN.',
+    buttonLabel: 'Sign In as Officer',
+  },
+  student: {
+    label: 'Student',
+    badge: 'Student Portal',
+    icon: GraduationCap,
+    identifierLabel: 'Student UID or Student Number',
+    identifierPlaceholder: 'e.g. ST-2026-0001 or 2023-8-0044',
+    secretLabel: 'Student Password',
+    secretPlaceholder: '••••••••',
+    helperText: 'Default password is your LAST NAME in CAPITAL letters.',
+    buttonLabel: 'Sign In as Student',
+  },
+  admin: {
+    label: 'Admin',
+    badge: 'Master Control',
+    icon: Shield,
+    identifierLabel: 'Admin Username',
+    identifierPlaceholder: 'admin',
+    secretLabel: 'Admin Password',
+    secretPlaceholder: '••••••••',
+    helperText: 'Default credentials: admin / admin123',
+    buttonLabel: 'Sign In as Admin',
+  },
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,13 +61,15 @@ export default function LoginPage() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  
-  // First-login password change state
+
+  // First-login password change state for students
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [firstLoginStudentUid, setFirstLoginStudentUid] = useState('');
   const [currentPassInput, setCurrentPassInput] = useState('');
   const [newPassInput, setNewPassInput] = useState('');
   const [confirmPassInput, setConfirmPassInput] = useState('');
+
+  const currentConfig = ROLE_CONFIGS[role];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,99 +128,98 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="bg-[#151E33] border border-slate-800/80 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
+    <div className="bg-[#151E33] border border-slate-800/80 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
       {/* Brand Header */}
       <div className="text-center mb-6">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 mb-3">
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 mb-3 shadow-inner">
           <QrCode className="w-8 h-8" />
         </div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">AttendQR</h1>
-        <p className="text-xs text-amber-400/90 font-medium uppercase tracking-wider mt-1">
+        <h1 className="text-2xl font-extrabold text-white tracking-tight">AttendQR</h1>
+        <p className="text-xs text-amber-400 font-semibold uppercase tracking-wider mt-1">
           Association of Computer Scientists
         </p>
       </div>
 
       {error && (
-        <div className="mb-5 p-3 rounded-lg bg-red-950/50 border border-red-800/60 text-red-300 text-xs font-medium">
+        <div className="mb-5 p-3.5 rounded-xl bg-red-950/60 border border-red-800/80 text-red-300 text-xs font-medium leading-relaxed">
           {error}
         </div>
       )}
 
-      {/* Role Selection Tabs */}
-      <div className="grid grid-cols-3 gap-1 bg-[#0B1120] p-1 rounded-xl mb-6 border border-slate-800">
-        <button
-          type="button"
-          onClick={() => { setRole('officer'); setError(''); }}
-          className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium transition-all ${
-            role === 'officer'
-              ? 'bg-[#151E33] text-amber-400 shadow-sm border border-slate-700/50'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <UserCheck className="w-3.5 h-3.5" />
-          Officer
-        </button>
-        <button
-          type="button"
-          onClick={() => { setRole('student'); setError(''); }}
-          className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium transition-all ${
-            role === 'student'
-              ? 'bg-[#151E33] text-amber-400 shadow-sm border border-slate-700/50'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <GraduationCap className="w-3.5 h-3.5" />
-          Student
-        </button>
-        <button
-          type="button"
-          onClick={() => { setRole('admin'); setError(''); }}
-          className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium transition-all ${
-            role === 'admin'
-              ? 'bg-[#151E33] text-amber-400 shadow-sm border border-slate-700/50'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Shield className="w-3.5 h-3.5" />
-          Admin
-        </button>
+      {/* Role Selection: 3 Dynamic Choices */}
+      <div className="space-y-1.5 mb-5">
+        <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+          Select Your Access Role:
+        </label>
+        <div className="grid grid-cols-3 gap-2">
+          {(['officer', 'student', 'admin'] as UserRole[]).map((r) => {
+            const cfg = ROLE_CONFIGS[r];
+            const Icon = cfg.icon;
+            const isSelected = role === r;
+
+            return (
+              <button
+                key={r}
+                type="button"
+                onClick={() => {
+                  setRole(r);
+                  setError('');
+                  setIdentifier('');
+                  setPassword('');
+                }}
+                className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center ${
+                  isSelected
+                    ? 'bg-[#0B1120] border-amber-500/80 text-amber-400 shadow-md shadow-amber-500/10'
+                    : 'bg-[#0B1120]/50 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                }`}
+              >
+                <Icon className={`w-5 h-5 mb-1.5 ${isSelected ? 'text-amber-400' : 'text-slate-500'}`} />
+                <span className="text-xs font-bold leading-tight">{cfg.label}</span>
+                <span className="text-[9px] text-slate-500 font-medium mt-0.5">{cfg.badge}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Login Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Unified Dynamic Form */}
+      <form onSubmit={handleSubmit} className="space-y-4 pt-1">
         <div>
-          <label className="block text-xs font-medium text-slate-300 mb-1.5">
-            {role === 'admin' ? 'Admin Email / Username' : role === 'officer' ? 'Officer Full Name' : 'Student UID / Student No.'}
+          <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center justify-between">
+            <span>{currentConfig.identifierLabel}</span>
+            <span className="text-[10px] text-amber-400 font-mono font-normal uppercase">{role}</span>
           </label>
           <div className="relative">
+            <User className="w-4 h-4 absolute left-3.5 top-3 text-slate-500" />
             <input
               type="text"
               required
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              placeholder={role === 'admin' ? 'admin@psu.edu.ph' : role === 'officer' ? 'e.g. Juan Dela Cruz' : 'e.g. ST-2026-0001'}
-              className="w-full bg-[#0B1120] border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400/80 transition-colors"
+              placeholder={currentConfig.identifierPlaceholder}
+              className="w-full bg-[#0B1120] border border-slate-700/80 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400/80 transition-colors"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-300 mb-1.5">
-            {role === 'officer' ? 'Officer PIN' : 'Password'}
+          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+            {currentConfig.secretLabel}
           </label>
           <div className="relative">
+            <Lock className="w-4 h-4 absolute left-3.5 top-3 text-slate-500" />
             <input
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder={role === 'officer' ? '••••' : '••••••••'}
-              className="w-full bg-[#0B1120] border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400/80 transition-colors"
+              placeholder={currentConfig.secretPlaceholder}
+              className="w-full bg-[#0B1120] border border-slate-700/80 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400/80 transition-colors"
             />
           </div>
-          {role === 'student' && (
-            <p className="text-[11px] text-slate-400 mt-1.5">
-              Default password is your <b className="text-slate-300 font-semibold">LAST NAME</b> in capital letters.
+          {currentConfig.helperText && (
+            <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
+              {currentConfig.helperText}
             </p>
           )}
         </div>
@@ -178,23 +227,23 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={isPending}
-          className="w-full mt-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-semibold py-2.5 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/10 disabled:opacity-50"
+          className="w-full mt-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold py-2.5 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/10 disabled:opacity-50"
         >
-          {isPending ? 'Authenticating...' : 'Sign In'}
+          {isPending ? 'Verifying...' : currentConfig.buttonLabel}
           <ArrowRight className="w-4 h-4" />
         </button>
       </form>
 
-      {/* First-Login Password Change Modal */}
+      {/* First-Login Password Change Modal for Students */}
       {showPasswordChange && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#151E33] border border-amber-500/30 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <div className="flex items-center gap-3 text-amber-400 mb-4">
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-[#151E33] border border-amber-500/40 rounded-3xl p-6 sm:p-7 max-w-sm w-full shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-amber-400">
               <KeyRound className="w-6 h-6" />
-              <h3 className="text-lg font-bold text-white">First-Time Login</h3>
+              <h3 className="text-lg font-bold text-white">Change Temporary Password</h3>
             </div>
-            <p className="text-xs text-slate-300 mb-4 leading-relaxed">
-              Please set a secure permanent password for your student account before continuing.
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Please set a permanent password for your student account before continuing.
             </p>
             <form onSubmit={handlePasswordChangeSubmit} className="space-y-3">
               <div>
@@ -204,7 +253,8 @@ export default function LoginPage() {
                   required
                   value={newPassInput}
                   onChange={(e) => setNewPassInput(e.target.value)}
-                  className="w-full bg-[#0B1120] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100"
+                  placeholder="••••••••"
+                  className="w-full bg-[#0B1120] border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100"
                 />
               </div>
               <div>
@@ -214,15 +264,16 @@ export default function LoginPage() {
                   required
                   value={confirmPassInput}
                   onChange={(e) => setConfirmPassInput(e.target.value)}
-                  className="w-full bg-[#0B1120] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100"
+                  placeholder="••••••••"
+                  className="w-full bg-[#0B1120] border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100"
                 />
               </div>
               <button
                 type="submit"
                 disabled={isPending}
-                className="w-full bg-amber-500 text-slate-950 font-semibold py-2 rounded-lg text-sm mt-3"
+                className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs mt-2 transition-colors"
               >
-                {isPending ? 'Updating...' : 'Set Password & Continue'}
+                {isPending ? 'Updating...' : 'Set Password & Enter Portal'}
               </button>
             </form>
           </div>

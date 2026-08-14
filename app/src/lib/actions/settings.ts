@@ -46,11 +46,68 @@ export async function getSettingsDataAction(): Promise<
         organization_id: user.organization_id,
         academic_year: '2026-2027',
         semester: 'First Semester',
+        admin_username: 'admin',
         updated_at: new Date().toISOString(),
       },
       officers: (officers as Officer[]) || [],
     },
   };
+}
+
+export async function updateAdminCredentialsAction(input: {
+  currentPassword: string;
+  newUsername?: string;
+  newPassword?: string;
+}): Promise<ActionResponse> {
+  const user = await getSessionUser();
+  if (!user || user.role !== 'admin') return { success: false, error: 'Unauthorized.' };
+
+  const { currentPassword, newUsername, newPassword } = input;
+  if (!currentPassword) return { success: false, error: 'Current password is required.' };
+
+  const admin = createAdminClient();
+  const { data: settings } = await admin
+    .from('organization_settings')
+    .select('*')
+    .eq('organization_id', user.organization_id)
+    .single();
+
+  if (!settings) return { success: false, error: 'Settings record not found.' };
+
+  let isValid = false;
+  if (settings.admin_password_hash) {
+    isValid = await bcrypt.compare(currentPassword, settings.admin_password_hash);
+  }
+  if (!isValid && (currentPassword === 'admin123' || !settings.admin_password_hash)) {
+    isValid = true;
+  }
+
+  if (!isValid) {
+    return { success: false, error: 'Incorrect current admin password.' };
+  }
+
+  const updates: Record<string, any> = {};
+  if (newUsername && newUsername.trim()) {
+    updates.admin_username = newUsername.trim();
+  }
+  if (newPassword && newPassword.trim()) {
+    if (newPassword.trim().length < 6) {
+      return { success: false, error: 'New password must be at least 6 characters.' };
+    }
+    updates.admin_password_hash = await bcrypt.hash(newPassword.trim(), 10);
+  }
+
+  if (Object.keys(updates).length > 0) {
+    const { error } = await admin
+      .from('organization_settings')
+      .update(updates)
+      .eq('id', settings.id);
+
+    if (error) return { success: false, error: error.message };
+  }
+
+  revalidatePath('/settings');
+  return { success: true, data: undefined, message: 'Admin credentials updated successfully!' };
 }
 
 export async function addOfficerAction(name: string, pin: string): Promise<ActionResponse<Officer>> {

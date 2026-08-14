@@ -96,6 +96,7 @@ export interface OrganizationSettings {
   organization_id: string;
   academic_year: string;
   semester: SemesterType;
+  admin_username?: string;
   updated_at: string;
 }
 
