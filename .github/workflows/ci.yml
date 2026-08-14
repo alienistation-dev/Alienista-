@@ -31,6 +31,9 @@ jobs:
       - name: Typecheck TypeScript
         run: npx tsc --noEmit
 
+      - name: Run Automated Tests
+        run: npm test
+
       - name: Build Next.js Application
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
