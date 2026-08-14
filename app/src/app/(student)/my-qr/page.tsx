@@ -23,8 +23,8 @@ export default async function MyQrPage() {
   return (
     <div className="space-y-6 text-center">
       <div>
-        <h1 className="text-xl font-bold text-white tracking-tight">My Membership Badge</h1>
-        <p className="text-xs text-slate-400 mt-1">Present this QR code to the officer during event attendance.</p>
+        <h1 className="text-xl font-extrabold text-[#1B4332] tracking-tight">My Membership Badge</h1>
+        <p className="text-xs text-slate-500 mt-1">Present this QR code to the officer during event attendance.</p>
       </div>
 
       <BadgeCard student={student as Student} />

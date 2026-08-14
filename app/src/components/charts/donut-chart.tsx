@@ -11,13 +11,13 @@ export function DonutChart({ present, total }: { present: number; total: number 
   return (
     <div className="relative flex items-center justify-center">
       <svg width="120" height="120" viewBox="0 0 120 120" className="transform -rotate-90">
-        <circle cx="60" cy="60" r={r} fill="none" stroke="#1E293B" strokeWidth="12" />
+        <circle cx="60" cy="60" r={r} fill="none" stroke="#E5EBE5" strokeWidth="12" />
         <circle
           cx="60"
           cy="60"
           r={r}
           fill="none"
-          stroke="#2F6B4F"
+          stroke="#2D6A4F"
           strokeWidth="12"
           strokeDasharray={c}
           strokeDashoffset={off}
@@ -26,7 +26,7 @@ export function DonutChart({ present, total }: { present: number; total: number 
         />
       </svg>
       <div className="absolute text-center">
-        <span className="text-xl font-bold text-white tracking-tight">{Math.round(pct * 100)}%</span>
+        <span className="text-xl font-extrabold text-[#1B4332] tracking-tight">{Math.round(pct * 100)}%</span>
       </div>
     </div>
   );

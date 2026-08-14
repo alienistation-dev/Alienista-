@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { SessionUser } from '@/lib/types/actions';
+import Image from 'next/image';
 import {
   LayoutDashboard,
   Users,
@@ -32,18 +33,19 @@ export function Sidebar({ user }: { user: SessionUser }) {
   const filteredNav = navItems.filter((item) => item.roles.includes(user.role));
 
   return (
-    <aside className="hidden md:flex flex-col w-64 border-r border-slate-800/80 bg-[#0B1120] shrink-0 h-screen sticky top-0">
-      <div className="h-16 px-6 flex items-center gap-3 border-b border-slate-800/80">
-        <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-          <QrCode className="w-5 h-5" />
+    <aside className="hidden md:flex flex-col w-64 border-r border-[#E5EBE5] bg-white shrink-0 h-screen sticky top-0 shadow-xs">
+      {/* Brand Header */}
+      <div className="h-16 px-6 flex items-center gap-3 border-b border-[#E5EBE5]">
+        <div className="relative w-9 h-9 rounded-full overflow-hidden border border-emerald-800/20 shadow-xs shrink-0">
+          <Image src="/icon-192.png" alt="ACS Logo" fill className="object-cover" />
         </div>
         <div>
-          <div className="font-bold text-sm text-white tracking-tight">AttendQR</div>
-          <div className="text-[10px] text-amber-400 font-medium tracking-wide uppercase">ACS PSU Palawan</div>
+          <div className="font-extrabold text-base text-[#1B4332] tracking-tight leading-tight">Alienista</div>
+          <div className="text-[10px] text-[#2D6A4F] font-semibold tracking-wide uppercase">ACS · Palawan State U</div>
         </div>
       </div>
 
-      <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
+      <nav className="p-3.5 space-y-1.5 flex-1 overflow-y-auto">
         {filteredNav.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
@@ -51,13 +53,13 @@ export function Sidebar({ user }: { user: SessionUser }) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-colors ${
+              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                 isActive
-                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                  ? 'bg-[#EBF5EE] text-[#1B4332] border border-[#C2E0CC] shadow-xs'
+                  : 'text-slate-600 hover:text-[#1B4332] hover:bg-[#F4F7F4]'
               }`}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className={`w-4 h-4 ${isActive ? 'text-[#2D6A4F]' : 'text-slate-500'}`} />
               {item.label}
             </Link>
           );

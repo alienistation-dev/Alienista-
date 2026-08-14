@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { Student } from '@/lib/types/models';
-import { Download, Printer } from 'lucide-react';
+import { Download } from 'lucide-react';
 
 export function BadgeCard({ student }: { student: Student }) {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
@@ -13,7 +13,7 @@ export function BadgeCard({ student }: { student: Student }) {
       width: 240,
       margin: 1,
       color: {
-        dark: '#0B1120',
+        dark: '#111827',
         light: '#FFFFFF',
       },
     }).then(setQrDataUrl);
@@ -28,13 +28,13 @@ export function BadgeCard({ student }: { student: Student }) {
     canvas.height = 700;
 
     // Outer Background
-    ctx.fillStyle = '#151E33';
+    ctx.fillStyle = '#FFFFFF';
     ctx.beginPath();
     ctx.roundRect(0, 0, 500, 700, 20);
     ctx.fill();
 
-    // Header Area
-    ctx.fillStyle = '#0B1120';
+    // Top Header Banner
+    ctx.fillStyle = '#1B4332';
     ctx.beginPath();
     ctx.roundRect(0, 0, 500, 220, [20, 20, 0, 0]);
     ctx.fill();
@@ -42,22 +42,22 @@ export function BadgeCard({ student }: { student: Student }) {
     // Brand Title
     ctx.fillStyle = '#D4AF37';
     ctx.font = 'bold 13px sans-serif';
-    ctx.fillText('ATTENDQR · CAMPUS ID BADGE', 30, 45);
+    ctx.fillText('ALIENISTA · ACS CAMPUS ID BADGE', 30, 45);
 
     // Full Name
     const name = student.full_name;
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 22px sans-serif';
-    ctx.fillText(name.length > 26 ? name.slice(0, 24) + '...' : name, 30, 95);
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillText(name.length > 24 ? name.slice(0, 22) + '...' : name, 30, 95);
 
     // Course & Year
-    ctx.fillStyle = '#94A3B8';
+    ctx.fillStyle = '#D1E7D7';
     ctx.font = '15px sans-serif';
     ctx.fillText(`${student.course} · ${student.year}`, 30, 135);
 
     // Divider Line
-    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(212, 175, 55, 0.4)';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(30, 165);
     ctx.lineTo(470, 165);
@@ -65,14 +65,17 @@ export function BadgeCard({ student }: { student: Student }) {
 
     // Section & Status
     ctx.fillStyle = '#D4AF37';
-    ctx.font = '14px sans-serif';
+    ctx.font = 'bold 14px sans-serif';
     ctx.fillText(`Section ${student.section} · ${student.status}`, 30, 195);
 
     // White QR Container Box
-    ctx.fillStyle = '#FFFFFF';
+    ctx.fillStyle = '#F8FAF9';
+    ctx.strokeStyle = '#E5EBE5';
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.roundRect(30, 250, 210, 210, 12);
     ctx.fill();
+    ctx.stroke();
 
     // Draw QR Image
     if (qrDataUrl) {
@@ -82,45 +85,46 @@ export function BadgeCard({ student }: { student: Student }) {
 
         // Information Column
         const infoX = 265;
-        ctx.fillStyle = '#D4AF37';
+        ctx.fillStyle = '#2D6A4F';
         ctx.font = 'bold 11px sans-serif';
         ctx.fillText('SYSTEM UID', infoX, 280);
 
-        ctx.fillStyle = '#FFFFFF';
+        ctx.fillStyle = '#111827';
         ctx.font = 'bold 16px monospace';
         ctx.fillText(student.uid, infoX, 306);
 
-        ctx.fillStyle = '#D4AF37';
+        ctx.fillStyle = '#2D6A4F';
         ctx.font = 'bold 11px sans-serif';
         ctx.fillText('STUDENT NUMBER', infoX, 350);
 
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = '15px monospace';
+        ctx.fillStyle = '#111827';
+        ctx.font = 'bold 15px monospace';
         ctx.fillText(student.student_number, infoX, 376);
 
-        ctx.fillStyle = '#D4AF37';
+        ctx.fillStyle = '#2D6A4F';
         ctx.font = 'bold 11px sans-serif';
         ctx.fillText('SECTION', infoX, 420);
 
-        ctx.fillStyle = '#94A3B8';
+        ctx.fillStyle = '#4B5563';
         ctx.font = '14px sans-serif';
         ctx.fillText(`Sec. ${student.section}`, infoX, 444);
 
         // Footer
-        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.strokeStyle = '#E5EBE5';
+        ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(30, 620);
         ctx.lineTo(470, 620);
         ctx.stroke();
 
-        ctx.fillStyle = '#D4AF37';
+        ctx.fillStyle = '#1B4332';
         ctx.font = 'bold 12px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('ASSOCIATION OF COMPUTER SCIENTISTS', 250, 655);
+        ctx.fillText('ASSOCIATION OF COMPUTER SCIENTISTS · PSU', 250, 655);
 
         // Download
         const a = document.createElement('a');
-        a.download = `${student.full_name.replace(/\s+/g, '_')}_Badge.png`;
+        a.download = `${student.full_name.replace(/\s+/g, '_')}_Alienista_Badge.png`;
         a.href = canvas.toDataURL('image/png');
         a.click();
       };
@@ -129,44 +133,44 @@ export function BadgeCard({ student }: { student: Student }) {
   };
 
   return (
-    <div className="bg-[#151E33] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl max-w-xs mx-auto flex flex-col justify-between">
+    <div className="bg-white border border-[#E5EBE5] rounded-3xl overflow-hidden shadow-md max-w-xs mx-auto flex flex-col justify-between">
       {/* Top Header Card */}
-      <div className="bg-[#0B1120] p-4 border-b border-slate-800/80">
-        <div className="text-[10px] uppercase font-bold text-amber-400 tracking-wider">AttendQR · Campus ID</div>
+      <div className="bg-[#1B4332] p-4 text-left border-b border-[#2D6A4F]/30">
+        <div className="text-[10px] uppercase font-bold text-[#D4AF37] tracking-wider">Alienista · Campus ID</div>
         <div className="text-sm font-bold text-white mt-1 truncate">{student.full_name}</div>
-        <div className="text-xs text-slate-400 mt-0.5">{student.course} · {student.year}</div>
+        <div className="text-xs text-[#D1E7D7] mt-0.5">{student.course} · {student.year}</div>
       </div>
 
       {/* Body QR Code */}
       <div className="p-5 flex items-center gap-4">
-        <div className="w-24 h-24 bg-white rounded-xl p-1.5 shrink-0 flex items-center justify-center shadow-inner">
+        <div className="w-24 h-24 bg-[#F8FAF9] rounded-2xl p-1.5 shrink-0 flex items-center justify-center border border-[#E5EBE5]">
           {qrDataUrl ? (
             <img src={qrDataUrl} alt={student.uid} className="w-full h-full object-contain" />
           ) : (
             <div className="text-[10px] text-slate-400">Generating...</div>
           )}
         </div>
-        <div className="space-y-1.5 text-xs">
+        <div className="space-y-1.5 text-xs text-left">
           <div>
-            <div className="text-[9px] uppercase tracking-wider font-bold text-amber-400">UID</div>
-            <div className="font-mono font-bold text-white text-[11px]">{student.uid}</div>
+            <div className="text-[9px] uppercase tracking-wider font-bold text-[#2D6A4F]">UID</div>
+            <div className="font-mono font-bold text-slate-900 text-[11px]">{student.uid}</div>
           </div>
           <div>
-            <div className="text-[9px] uppercase tracking-wider font-bold text-amber-400">Student No.</div>
-            <div className="font-mono text-slate-300 text-[11px]">{student.student_number}</div>
+            <div className="text-[9px] uppercase tracking-wider font-bold text-[#2D6A4F]">Student No.</div>
+            <div className="font-mono text-slate-700 text-[11px]">{student.student_number}</div>
           </div>
           <div>
-            <div className="text-[9px] uppercase tracking-wider font-bold text-amber-400">Section</div>
-            <div className="text-slate-300 text-[11px]">Sec. {student.section}</div>
+            <div className="text-[9px] uppercase tracking-wider font-bold text-[#2D6A4F]">Section</div>
+            <div className="text-slate-700 text-[11px]">Sec. {student.section}</div>
           </div>
         </div>
       </div>
 
       {/* Card Actions */}
-      <div className="p-3 bg-[#0B1120]/60 border-t border-slate-800 flex items-center justify-end gap-2">
+      <div className="p-3 bg-[#F8FAF9] border-t border-[#E5EBE5] flex items-center justify-end gap-2">
         <button
           onClick={handleDownloadPng}
-          className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold rounded-lg text-xs flex items-center gap-1.5 transition-colors shadow-sm"
+          className="px-3.5 py-1.5 bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-semibold rounded-xl text-xs flex items-center gap-1.5 transition-colors shadow-xs"
         >
           <Download className="w-3.5 h-3.5" />
           <span>Download PNG</span>

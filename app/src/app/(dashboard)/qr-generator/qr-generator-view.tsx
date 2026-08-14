@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Student } from '@/lib/types/models';
 import { BadgeCard } from '@/components/badges/badge-card';
-import { Search, Printer, BadgePercent } from 'lucide-react';
+import { Search, Printer } from 'lucide-react';
 
 export function QrGeneratorView({ students }: { students: Student[] }) {
   const [search, setSearch] = useState('');
@@ -25,7 +25,7 @@ export function QrGeneratorView({ students }: { students: Student[] }) {
   return (
     <div className="space-y-6">
       {/* Header Toolbar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[#151E33] border border-slate-800 rounded-2xl p-4">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white border border-[#E5EBE5] rounded-2xl p-4 shadow-xs">
         <div className="relative flex-1 max-w-sm">
           <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
           <input
@@ -36,13 +36,13 @@ export function QrGeneratorView({ students }: { students: Student[] }) {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full bg-[#0B1120] border border-slate-700 rounded-xl pl-9 pr-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+            className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl pl-9 pr-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#2D6A4F]"
           />
         </div>
 
         <button
           onClick={() => window.print()}
-          className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-4 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm self-end sm:self-auto"
+          className="bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs self-end sm:self-auto"
         >
           <Printer className="w-4 h-4" />
           <span>Print Badges</span>
@@ -52,7 +52,7 @@ export function QrGeneratorView({ students }: { students: Student[] }) {
       {/* Badges Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {paginated.length === 0 ? (
-          <div className="col-span-full p-12 text-center text-xs text-slate-500 bg-[#151E33] border border-slate-800 rounded-2xl">
+          <div className="col-span-full p-12 text-center text-xs text-slate-400 bg-white border border-[#E5EBE5] rounded-2xl">
             No students found matching your search.
           </div>
         ) : (
@@ -62,20 +62,20 @@ export function QrGeneratorView({ students }: { students: Student[] }) {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-2 text-xs text-slate-400">
+        <div className="flex items-center justify-between pt-2 text-xs text-slate-500 font-medium">
           <span>Page {page} of {totalPages} ({filtered.length} total)</span>
           <div className="flex items-center gap-1.5">
             <button
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
-              className="px-3 py-1.5 rounded-xl bg-[#151E33] border border-slate-800 hover:border-slate-700 disabled:opacity-40"
+              className="px-3 py-1.5 rounded-xl bg-white border border-[#E5EBE5] hover:border-slate-300 disabled:opacity-40"
             >
               Prev
             </button>
             <button
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="px-3 py-1.5 rounded-xl bg-[#151E33] border border-slate-800 hover:border-slate-700 disabled:opacity-40"
+              className="px-3 py-1.5 rounded-xl bg-white border border-[#E5EBE5] hover:border-slate-300 disabled:opacity-40"
             >
               Next
             </button>

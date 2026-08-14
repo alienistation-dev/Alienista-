@@ -12,25 +12,25 @@ export default async function StudentLayout({ children }: { children: React.Reac
   }
 
   return (
-    <div className="min-h-screen bg-[#0B1120] text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[#F8FAF9] text-slate-900 flex flex-col">
       <Header user={user} />
       <main className="flex-1 p-4 sm:p-6 max-w-xl w-full mx-auto pb-24">{children}</main>
 
       {/* Student Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-[#0B1120]/95 backdrop-blur-xl border-t border-slate-800/80 px-6 flex items-center justify-around z-40">
+      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-xl border-t border-[#E5EBE5] px-6 flex items-center justify-around z-40 shadow-md">
         <Link
           href="/my-qr"
-          className="flex flex-col items-center justify-center py-1 px-4 text-slate-300 hover:text-amber-400 transition-colors"
+          className="flex flex-col items-center justify-center py-1 px-4 text-slate-600 hover:text-[#2D6A4F] transition-colors"
         >
           <QrCode className="w-5 h-5" />
-          <span className="text-[10px] font-medium mt-1">My Badge</span>
+          <span className="text-[10px] font-bold mt-1">My Badge</span>
         </Link>
         <Link
           href="/my-attendance"
-          className="flex flex-col items-center justify-center py-1 px-4 text-slate-300 hover:text-amber-400 transition-colors"
+          className="flex flex-col items-center justify-center py-1 px-4 text-slate-600 hover:text-[#2D6A4F] transition-colors"
         >
           <History className="w-5 h-5" />
-          <span className="text-[10px] font-medium mt-1">Attendance History</span>
+          <span className="text-[10px] font-bold mt-1">Attendance History</span>
         </Link>
       </nav>
     </div>
