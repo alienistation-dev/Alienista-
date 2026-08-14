@@ -9,6 +9,10 @@
 # testing
 /coverage
 
+/supabase
+
+/docs
+
 # next.js
 /.next/
 /out/
