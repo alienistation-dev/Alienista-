@@ -109,6 +109,32 @@ class OfflineDatabase {
       tx.onerror = () => reject(tx.error);
     });
   }
+
+  async cacheStudentAvatars(students: Array<{ uid: string; avatar_url: string | null }>): Promise<void> {
+    if (typeof window === 'undefined' || !('caches' in window)) return;
+    try {
+      const cache = await caches.open('alienista_avatar_cache_v1');
+      const validAvatars = students.filter((s) => Boolean(s.avatar_url));
+      await Promise.allSettled(
+        validAvatars.map(async (s) => {
+          if (!s.avatar_url) return;
+          try {
+            const existing = await cache.match(s.avatar_url);
+            if (!existing) {
+              const res = await fetch(s.avatar_url, { mode: 'cors' });
+              if (res.ok) {
+                await cache.put(s.avatar_url, res);
+              }
+            }
+          } catch {
+            // Ignore offline network failure during pre-caching
+          }
+        })
+      );
+    } catch {
+      // Ignore cache API failures
+    }
+  }
 }
 
 export const offlineDB = new OfflineDatabase();

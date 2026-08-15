@@ -10,4 +10,5 @@ export const studentSchema = z.object({
   year: z.enum(['1st Year', '2nd Year', '3rd Year', '4th Year']),
   section: z.string().min(1, 'Block is required'),
   status: z.enum(['Active', 'Inactive']).default('Active'),
+  avatar_url: z.string().optional().nullable(),
 });

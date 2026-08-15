@@ -32,6 +32,7 @@ interface ScanFeedback {
   status: 'present' | 'dup' | 'offline_queued' | 'invalid';
   name?: string;
   uid?: string;
+  avatar_url?: string | null;
   detail?: string;
 }
 
@@ -53,6 +54,13 @@ export function ScannerView({ events, students, userRole, officerName, officerId
   const { pendingCount, isSyncing, triggerSync, refreshPendingCount } = useAutoSync();
 
   const currentEvent = events.find((e) => e.id === selectedEventId);
+
+  // Pre-cache all student face photos for offline instant display
+  useEffect(() => {
+    if (students && students.length > 0) {
+      offlineDB.cacheStudentAvatars(students);
+    }
+  }, [students]);
 
   // Update Slot Timer
   useEffect(() => {
@@ -141,6 +149,7 @@ export function ScannerView({ events, students, userRole, officerName, officerId
               status: 'present',
               name: res.data.student_name,
               uid,
+              avatar_url: matchedStudent?.avatar_url || null,
               detail: 'Attendance Recorded',
             });
             setRecentScans((prev) => [
@@ -156,6 +165,7 @@ export function ScannerView({ events, students, userRole, officerName, officerId
               status: 'dup',
               name: studentName,
               uid,
+              avatar_url: matchedStudent?.avatar_url || null,
               detail: 'Already Scanned for this window',
             });
             setRecentScans((prev) => [
@@ -170,6 +180,7 @@ export function ScannerView({ events, students, userRole, officerName, officerId
               status: 'invalid',
               name: studentName,
               uid,
+              avatar_url: matchedStudent?.avatar_url || null,
               detail: res.error || 'Invalid Scan',
             });
             playBeep('err');
@@ -185,6 +196,7 @@ export function ScannerView({ events, students, userRole, officerName, officerId
         status: 'offline_queued',
         name: studentName,
         uid,
+        avatar_url: matchedStudent?.avatar_url || null,
         detail: '⚡ Saved locally to device (will sync automatically)',
       });
       setRecentScans((prev) => [
@@ -323,25 +335,70 @@ export function ScannerView({ events, students, userRole, officerName, officerId
                 <span>Ready to scan badge or enter student UID.</span>
               </div>
             ) : lastScan.status === 'present' ? (
-              <div className="space-y-1">
-                <CheckCircle2 className="w-10 h-10 text-[#2D6A4F] mx-auto" />
-                <div className="text-sm font-extrabold text-[#1B4332] uppercase tracking-wider">✓ Present Recorded</div>
-                <div className="text-base font-extrabold text-slate-900">{lastScan.name}</div>
-                <div className="text-xs font-mono text-slate-500">{lastScan.uid}</div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-center gap-3">
+                  {lastScan.avatar_url ? (
+                    <img
+                      src={lastScan.avatar_url}
+                      alt={lastScan.name}
+                      className="w-14 h-14 rounded-2xl object-cover border-2 border-[#2D6A4F] shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 rounded-2xl bg-[#EBF5EE] text-[#1B4332] border-2 border-[#C2E0CC] flex items-center justify-center font-extrabold text-base">
+                      {lastScan.name?.[0] || 'S'}
+                    </div>
+                  )}
+                  <CheckCircle2 className="w-8 h-8 text-[#2D6A4F]" />
+                </div>
+                <div>
+                  <div className="text-xs font-extrabold text-[#1B4332] uppercase tracking-wider">✓ Present Recorded</div>
+                  <div className="text-base font-extrabold text-slate-900">{lastScan.name}</div>
+                  <div className="text-xs font-mono text-slate-500">{lastScan.uid}</div>
+                </div>
               </div>
             ) : lastScan.status === 'dup' ? (
-              <div className="space-y-1">
-                <AlertTriangle className="w-10 h-10 text-amber-600 mx-auto" />
-                <div className="text-sm font-extrabold text-amber-800 uppercase tracking-wider">Already Scanned</div>
-                <div className="text-base font-extrabold text-slate-900">{lastScan.name}</div>
-                <div className="text-xs text-amber-700 font-medium">{lastScan.detail}</div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-center gap-3">
+                  {lastScan.avatar_url ? (
+                    <img
+                      src={lastScan.avatar_url}
+                      alt={lastScan.name}
+                      className="w-14 h-14 rounded-2xl object-cover border-2 border-amber-500 shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-900 border-2 border-amber-200 flex items-center justify-center font-extrabold text-base">
+                      {lastScan.name?.[0] || 'S'}
+                    </div>
+                  )}
+                  <AlertTriangle className="w-8 h-8 text-amber-600" />
+                </div>
+                <div>
+                  <div className="text-xs font-extrabold text-amber-800 uppercase tracking-wider">Already Scanned</div>
+                  <div className="text-base font-extrabold text-slate-900">{lastScan.name}</div>
+                  <div className="text-xs text-amber-700 font-medium">{lastScan.detail}</div>
+                </div>
               </div>
             ) : lastScan.status === 'offline_queued' ? (
-              <div className="space-y-1">
-                <CheckCircle2 className="w-10 h-10 text-sky-600 mx-auto" />
-                <div className="text-sm font-extrabold text-sky-800 uppercase tracking-wider">⚡ Saved Offline</div>
-                <div className="text-base font-extrabold text-slate-900">{lastScan.name}</div>
-                <div className="text-xs text-slate-600 font-medium">{lastScan.detail}</div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-center gap-3">
+                  {lastScan.avatar_url ? (
+                    <img
+                      src={lastScan.avatar_url}
+                      alt={lastScan.name}
+                      className="w-14 h-14 rounded-2xl object-cover border-2 border-sky-500 shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 rounded-2xl bg-sky-50 text-sky-900 border-2 border-sky-200 flex items-center justify-center font-extrabold text-base">
+                      {lastScan.name?.[0] || 'S'}
+                    </div>
+                  )}
+                  <CheckCircle2 className="w-8 h-8 text-sky-600" />
+                </div>
+                <div>
+                  <div className="text-xs font-extrabold text-sky-800 uppercase tracking-wider">⚡ Saved Offline</div>
+                  <div className="text-base font-extrabold text-slate-900">{lastScan.name}</div>
+                  <div className="text-xs text-slate-600 font-medium">{lastScan.detail}</div>
+                </div>
               </div>
             ) : (
               <div className="space-y-1">

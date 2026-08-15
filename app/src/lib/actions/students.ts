@@ -86,6 +86,7 @@ export async function createStudentAction(rawInput: unknown): Promise<ActionResp
       year: parsed.data.year,
       section: parsed.data.section.trim(),
       status: parsed.data.status,
+      avatar_url: parsed.data.avatar_url || null,
       password_hash: passHash,
       is_first_login: true,
     })
@@ -117,25 +118,98 @@ export async function updateStudentAction(id: string, rawInput: unknown): Promis
   const lastName = parsed.data.last_name.trim();
   const computedFullName = `${firstName} ${lastName}`;
 
+  const updatePayload: Record<string, any> = {
+    ...(parsed.data.uid ? { uid: parsed.data.uid.trim() } : {}),
+    student_number: parsed.data.student_number.trim(),
+    first_name: firstName,
+    last_name: lastName,
+    full_name: computedFullName,
+    course: parsed.data.course,
+    year: parsed.data.year,
+    section: parsed.data.section.trim(),
+    status: parsed.data.status,
+  };
+
+  if (parsed.data.avatar_url !== undefined) {
+    updatePayload.avatar_url = parsed.data.avatar_url || null;
+  }
+
   const { error } = await admin
     .from('students')
-    .update({
-      ...(parsed.data.uid ? { uid: parsed.data.uid.trim() } : {}),
-      student_number: parsed.data.student_number.trim(),
-      first_name: firstName,
-      last_name: lastName,
-      full_name: computedFullName,
-      course: parsed.data.course,
-      year: parsed.data.year,
-      section: parsed.data.section.trim(),
-      status: parsed.data.status,
-    })
+    .update(updatePayload)
     .eq('id', id)
     .eq('organization_id', orgId);
 
   if (error) return { success: false, error: error.message };
   revalidatePath('/students');
   return { success: true, data: undefined };
+}
+
+export async function uploadStudentAvatarAction(formData: FormData): Promise<ActionResponse<{ publicUrl: string }>> {
+  try {
+    const user = await getSessionUser();
+    if (!user || (user.role !== 'admin' && user.role !== 'officer')) {
+      return { success: false, error: 'Unauthorized. Admin or officer access required.' };
+    }
+
+    const file = formData.get('file') as File | null;
+    if (!file) {
+      return { success: false, error: 'No image file provided.' };
+    }
+
+    // Size limit: 2MB (2 * 1024 * 1024 bytes)
+    const MAX_SIZE = 2 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      return { success: false, error: 'Image size exceeds the 2MB limit. Please upload a smaller image.' };
+    }
+
+    // MIME type validation: strictly JPEG, PNG, WebP (GIF explicitly blocked)
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type.toLowerCase()) || file.type.toLowerCase() === 'image/gif') {
+      return { success: false, error: 'Invalid file format. Only JPG, PNG, and WebP images are allowed (no GIFs).' };
+    }
+
+    const orgId = await getEffectiveOrgId(user.organization_id);
+    const admin = createAdminClient();
+
+    // Ensure bucket exists
+    const { data: buckets } = await admin.storage.listBuckets();
+    if (!buckets?.some((b) => b.name === 'student-avatars')) {
+      await admin.storage.createBucket('student-avatars', {
+        public: true,
+        fileSizeLimit: MAX_SIZE,
+        allowedMimeTypes: allowedTypes,
+      });
+    }
+
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const cleanExt = ext === 'jpeg' ? 'jpg' : ext;
+    const studentUid = (formData.get('student_uid') as string) || 'avatar';
+    const filePath = `${orgId}/${studentUid}_${Date.now()}.${cleanExt}`;
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    const { error: uploadError } = await admin.storage
+      .from('student-avatars')
+      .upload(filePath, buffer, {
+        contentType: file.type,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError);
+      return { success: false, error: `Failed to upload image: ${uploadError.message}` };
+    }
+
+    const { data: { publicUrl } } = admin.storage
+      .from('student-avatars')
+      .getPublicUrl(filePath);
+
+    return { success: true, data: { publicUrl } };
+  } catch (err: any) {
+    console.error('uploadStudentAvatarAction error:', err);
+    return { success: false, error: err?.message || 'Failed to upload student photo.' };
+  }
 }
 
 export async function deleteStudentAction(id: string): Promise<ActionResponse> {
