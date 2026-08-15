@@ -8,18 +8,26 @@ import { Download } from 'lucide-react';
 export function BadgeCard({ student }: { student: Student }) {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
+  const uid = student?.uid || 'ST-UNKNOWN';
+  const fullName = student?.full_name || 'Student';
+  const studentNumber = student?.student_number || 'N/A';
+  const course = student?.course || 'BS Computer Science';
+  const year = student?.year || '1st Year';
+  const rawSection = student?.section || '1';
+  const blockLabel = rawSection.startsWith('Block') ? rawSection : `Block ${rawSection}`;
+  const status = student?.status || 'Active';
+
   useEffect(() => {
-    QRCode.toDataURL(student.uid, {
+    if (!uid) return;
+    QRCode.toDataURL(uid, {
       width: 240,
       margin: 1,
       color: {
         dark: '#111827',
         light: '#FFFFFF',
       },
-    }).then(setQrDataUrl);
-  }, [student.uid]);
-
-  const blockLabel = student.section.startsWith('Block') ? student.section : `Block ${student.section}`;
+    }).then(setQrDataUrl).catch(() => {});
+  }, [uid]);
 
   const handleDownloadPng = () => {
     const canvas = document.createElement('canvas');
@@ -47,7 +55,7 @@ export function BadgeCard({ student }: { student: Student }) {
     ctx.fillText('ALIENISTA · ACS CAMPUS ID BADGE', 30, 45);
 
     // Full Name
-    const name = student.full_name;
+    const name = fullName;
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 24px sans-serif';
     ctx.fillText(name.length > 24 ? name.slice(0, 22) + '...' : name, 30, 95);
@@ -55,7 +63,7 @@ export function BadgeCard({ student }: { student: Student }) {
     // Course & Year
     ctx.fillStyle = '#D1E7D7';
     ctx.font = '15px sans-serif';
-    ctx.fillText(`${student.course} · ${student.year}`, 30, 135);
+    ctx.fillText(`${course} · ${year}`, 30, 135);
 
     // Divider Line
     ctx.strokeStyle = 'rgba(212, 175, 55, 0.4)';
@@ -68,7 +76,7 @@ export function BadgeCard({ student }: { student: Student }) {
     // Block & Status
     ctx.fillStyle = '#D4AF37';
     ctx.font = 'bold 14px sans-serif';
-    ctx.fillText(`${blockLabel} · ${student.status}`, 30, 195);
+    ctx.fillText(`${blockLabel} · ${status}`, 30, 195);
 
     // White QR Container Box
     ctx.fillStyle = '#F8FAF9';
@@ -93,7 +101,7 @@ export function BadgeCard({ student }: { student: Student }) {
 
         ctx.fillStyle = '#111827';
         ctx.font = 'bold 16px monospace';
-        ctx.fillText(student.uid, infoX, 306);
+        ctx.fillText(uid, infoX, 306);
 
         ctx.fillStyle = '#2D6A4F';
         ctx.font = 'bold 11px sans-serif';
@@ -101,7 +109,7 @@ export function BadgeCard({ student }: { student: Student }) {
 
         ctx.fillStyle = '#111827';
         ctx.font = 'bold 15px monospace';
-        ctx.fillText(student.student_number, infoX, 376);
+        ctx.fillText(studentNumber, infoX, 376);
 
         ctx.fillStyle = '#2D6A4F';
         ctx.font = 'bold 11px sans-serif';
@@ -126,7 +134,7 @@ export function BadgeCard({ student }: { student: Student }) {
 
         // Download
         const a = document.createElement('a');
-        a.download = `${student.full_name.replace(/\s+/g, '_')}_Alienista_Badge.png`;
+        a.download = `${fullName.replace(/\s+/g, '_')}_Alienista_Badge.png`;
         a.href = canvas.toDataURL('image/png');
         a.click();
       };
@@ -139,15 +147,15 @@ export function BadgeCard({ student }: { student: Student }) {
       {/* Top Header Card */}
       <div className="bg-[#1B4332] p-4 text-left border-b border-[#2D6A4F]/30">
         <div className="text-[10px] uppercase font-bold text-[#D4AF37] tracking-wider">Alienista · Campus ID</div>
-        <div className="text-sm font-bold text-white mt-1 truncate">{student.full_name}</div>
-        <div className="text-xs text-[#D1E7D7] mt-0.5">{student.course} · {student.year}</div>
+        <div className="text-sm font-bold text-white mt-1 truncate">{fullName}</div>
+        <div className="text-xs text-[#D1E7D7] mt-0.5">{course} · {year}</div>
       </div>
 
       {/* Body QR Code */}
       <div className="p-5 flex items-center gap-4">
         <div className="w-24 h-24 bg-[#F8FAF9] rounded-2xl p-1.5 shrink-0 flex items-center justify-center border border-[#E5EBE5]">
           {qrDataUrl ? (
-            <img src={qrDataUrl} alt={student.uid} className="w-full h-full object-contain" />
+            <img src={qrDataUrl} alt={uid} className="w-full h-full object-contain" />
           ) : (
             <div className="text-[10px] text-slate-400">Generating...</div>
           )}
@@ -155,11 +163,11 @@ export function BadgeCard({ student }: { student: Student }) {
         <div className="space-y-1.5 text-xs text-left">
           <div>
             <div className="text-[9px] uppercase tracking-wider font-bold text-[#2D6A4F]">UID</div>
-            <div className="font-mono font-bold text-slate-900 text-[11px]">{student.uid}</div>
+            <div className="font-mono font-bold text-slate-900 text-[11px]">{uid}</div>
           </div>
           <div>
             <div className="text-[9px] uppercase tracking-wider font-bold text-[#2D6A4F]">Student No.</div>
-            <div className="font-mono text-slate-700 text-[11px]">{student.student_number}</div>
+            <div className="font-mono text-slate-700 text-[11px]">{studentNumber}</div>
           </div>
           <div>
             <div className="text-[9px] uppercase tracking-wider font-bold text-[#2D6A4F]">Block</div>

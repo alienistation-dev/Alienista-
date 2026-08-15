@@ -1,6 +1,6 @@
 import React from 'react';
 import { getSessionUser } from '@/lib/session';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
 import { Calendar, Clock, CheckCircle2 } from 'lucide-react';
 
@@ -9,6 +9,7 @@ export default async function MyAttendancePage() {
   if (!user || user.role !== 'student') redirect('/login');
 
   const admin = createAdminClient();
+  const orgId = await getEffectiveOrgId(user.organization_id);
 
   const { data: attendance } = await admin
     .from('v_attendance_details')
@@ -19,7 +20,7 @@ export default async function MyAttendancePage() {
   const { data: events } = await admin
     .from('events')
     .select('id')
-    .eq('organization_id', user.organization_id);
+    .eq('organization_id', orgId);
 
   const totalEvents = Math.max(1, events?.length || 1);
   const attendedCount = attendance?.length || 0;

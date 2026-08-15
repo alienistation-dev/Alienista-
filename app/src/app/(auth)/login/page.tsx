@@ -35,8 +35,8 @@ const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
     label: 'Student',
     badge: 'Student Portal',
     icon: GraduationCap,
-    identifierLabel: 'Student UID or Student Number',
-    identifierPlaceholder: 'e.g. ST-2026-0001 or 2026-8-0123',
+    identifierLabel: 'Student Number',
+    identifierPlaceholder: 'e.g. 2026-8-0123',
     secretLabel: 'Student Password',
     secretPlaceholder: '••••••••',
     helperText: 'Default password is your LAST NAME in CAPITAL letters.',
@@ -77,54 +77,64 @@ export default function LoginPage() {
     setError('');
 
     startTransition(async () => {
-      const res = await loginAction({ role, identifier, password });
-      if (!res.success) {
-        setError(res.error);
-        return;
-      }
+      try {
+        const res = await loginAction({ role, identifier, password });
+        if (!res.success) {
+          setError(res.error);
+          return;
+        }
 
-      if (res.data.role === 'student' && res.data.must_change_password) {
-        setFirstLoginStudentUid(identifier);
-        setCurrentPassInput(password);
-        setShowPasswordChange(true);
-        return;
-      }
+        if (res.data.role === 'student' && res.data.must_change_password) {
+          setFirstLoginStudentUid(identifier);
+          setCurrentPassInput(password);
+          setShowPasswordChange(true);
+          return;
+        }
 
-      if (res.data.role === 'student') {
-        router.push('/my-qr');
-      } else {
-        router.push('/');
+        if (res.data.role === 'student') {
+          window.location.href = '/my-qr';
+        } else {
+          window.location.href = '/';
+        }
+      } catch (err: any) {
+        setError(err?.message || 'Login request failed. Please try again.');
       }
-      router.refresh();
     });
   };
 
+  const [modalError, setModalError] = useState('');
+
   const handlePasswordChangeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setModalError('');
+
     if (newPassInput !== confirmPassInput) {
-      setError('New passwords do not match.');
+      setModalError('New passwords do not match.');
       return;
     }
     if (newPassInput.length < 6) {
-      setError('Password must be at least 6 characters.');
+      setModalError('Password must be at least 6 characters.');
       return;
     }
 
     startTransition(async () => {
-      const res = await changeStudentPasswordAction({
-        identifier: firstLoginStudentUid,
-        currentPassword: currentPassInput,
-        newPassword: newPassInput,
-      });
+      try {
+        const res = await changeStudentPasswordAction({
+          identifier: firstLoginStudentUid,
+          currentPassword: currentPassInput,
+          newPassword: newPassInput,
+        });
 
-      if (!res.success) {
-        setError(res.error);
-        return;
+        if (!res.success) {
+          setModalError(res.error);
+          return;
+        }
+
+        setShowPasswordChange(false);
+        window.location.href = '/my-qr';
+      } catch (err: any) {
+        setModalError(err?.message || 'Failed to update password.');
       }
-
-      setShowPasswordChange(false);
-      router.push('/my-qr');
-      router.refresh();
     });
   };
 
@@ -246,6 +256,11 @@ export default function LoginPage() {
             <p className="text-xs text-slate-600 leading-relaxed">
               Welcome to Alienista! Please set a secure permanent password for your student account before entering.
             </p>
+            {modalError && (
+              <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
+                {modalError}
+              </div>
+            )}
             <form onSubmit={handlePasswordChangeSubmit} className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">New Password (min 6 chars)</label>
