@@ -67,7 +67,10 @@ export async function createStudentAction(rawInput: unknown): Promise<ActionResp
     finalUid = `${prefix}${String(maxSeq + 1).padStart(4, '0')}`;
   }
 
-  const defaultPass = (parsed.data.full_name.trim().split(' ').pop() || 'STUDENT').toUpperCase();
+  const firstName = parsed.data.first_name.trim();
+  const lastName = parsed.data.last_name.trim();
+  const computedFullName = `${firstName} ${lastName}`;
+  const defaultPass = lastName.toUpperCase();
   const passHash = await bcrypt.hash(defaultPass, 10);
 
   const { data, error } = await admin
@@ -76,7 +79,9 @@ export async function createStudentAction(rawInput: unknown): Promise<ActionResp
       organization_id: orgId,
       uid: finalUid,
       student_number: parsed.data.student_number.trim(),
-      full_name: parsed.data.full_name.trim(),
+      first_name: firstName,
+      last_name: lastName,
+      full_name: computedFullName,
       course: parsed.data.course,
       year: parsed.data.year,
       section: parsed.data.section.trim(),
@@ -107,12 +112,19 @@ export async function updateStudentAction(id: string, rawInput: unknown): Promis
 
   const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
+
+  const firstName = parsed.data.first_name.trim();
+  const lastName = parsed.data.last_name.trim();
+  const computedFullName = `${firstName} ${lastName}`;
+
   const { error } = await admin
     .from('students')
     .update({
       ...(parsed.data.uid ? { uid: parsed.data.uid.trim() } : {}),
       student_number: parsed.data.student_number.trim(),
-      full_name: parsed.data.full_name.trim(),
+      first_name: firstName,
+      last_name: lastName,
+      full_name: computedFullName,
       course: parsed.data.course,
       year: parsed.data.year,
       section: parsed.data.section.trim(),
@@ -151,14 +163,14 @@ export async function resetStudentPasswordAction(id: string): Promise<ActionResp
   const admin = createAdminClient();
   const { data: student } = await admin
     .from('students')
-    .select('id, full_name, last_name')
+    .select('id, full_name, last_name, first_name')
     .eq('id', id)
     .eq('organization_id', orgId)
     .single();
 
   if (!student) return { success: false, error: 'Student not found.' };
 
-  const defaultPass = (student.last_name || student.full_name.trim().split(' ').pop() || 'STUDENT').toUpperCase();
+  const defaultPass = (student.last_name || student.full_name.trim().split(' ').pop() || 'STUDENT').trim().toUpperCase();
   const passHash = await bcrypt.hash(defaultPass, 10);
 
   const { error } = await admin
@@ -171,14 +183,16 @@ export async function resetStudentPasswordAction(id: string): Promise<ActionResp
 
   if (error) return { success: false, error: error.message };
 
-  return { success: true, data: defaultPass, message: `Password reset to: ${defaultPass}` };
+  return { success: true, data: defaultPass, message: `Password reset to default (${defaultPass})` };
 }
 
 export async function bulkImportStudentsCsvAction(
   csvRows: Array<{
-    uid: string;
+    uid?: string;
     student_number: string;
-    full_name: string;
+    first_name?: string;
+    last_name?: string;
+    full_name?: string;
     course?: string;
     year: any;
     section: string;
@@ -195,14 +209,39 @@ export async function bulkImportStudentsCsvAction(
   const errors: string[] = [];
 
   for (const row of csvRows) {
-    const defaultPass = (row.full_name.trim().split(' ').pop() || 'STUDENT').toUpperCase();
+    let firstName = (row.first_name || '').trim();
+    let lastName = (row.last_name || '').trim();
+    let fullName = (row.full_name || '').trim();
+
+    if (!firstName || !lastName) {
+      if (fullName) {
+        const parts = fullName.split(' ');
+        lastName = parts.pop() || 'STUDENT';
+        firstName = parts.join(' ') || lastName;
+      } else {
+        firstName = 'Student';
+        lastName = 'Member';
+        fullName = 'Student Member';
+      }
+    } else {
+      fullName = `${firstName} ${lastName}`;
+    }
+
+    const defaultPass = lastName.toUpperCase();
     const passHash = await bcrypt.hash(defaultPass, 10);
+
+    let uid = (row.uid || '').trim();
+    if (!uid) {
+      uid = `ST-${new Date().getFullYear()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    }
 
     const { error } = await admin.from('students').insert({
       organization_id: orgId,
-      uid: row.uid.trim(),
+      uid,
       student_number: row.student_number.trim(),
-      full_name: row.full_name.trim(),
+      first_name: firstName,
+      last_name: lastName,
+      full_name: fullName,
       course: row.course || 'BS Computer Science',
       year: row.year || '1st Year',
       section: row.section.trim(),
@@ -213,7 +252,7 @@ export async function bulkImportStudentsCsvAction(
 
     if (error) {
       failed++;
-      errors.push(`Row ${row.uid} (${row.full_name}): ${error.message}`);
+      errors.push(`Row ${row.student_number} (${fullName}): ${error.message}`);
     } else {
       imported++;
     }

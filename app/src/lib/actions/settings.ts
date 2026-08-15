@@ -7,12 +7,11 @@ import { ActionResponse } from '@/lib/types/actions';
 import { Officer, OrganizationSettings, YearLevel } from '@/lib/types/models';
 import { revalidatePath } from 'next/cache';
 
-const YEAR_FLOW: Record<YearLevel, { nextYear: YearLevel; status: 'Active' | 'Inactive' | 'Alumni' }> = {
+const YEAR_FLOW: Record<YearLevel, { nextYear: YearLevel; status: 'Active' | 'Inactive' }> = {
   '1st Year': { nextYear: '2nd Year', status: 'Active' },
   '2nd Year': { nextYear: '3rd Year', status: 'Active' },
   '3rd Year': { nextYear: '4th Year', status: 'Active' },
-  '4th Year': { nextYear: 'Alumni', status: 'Alumni' },
-  'Alumni': { nextYear: 'Alumni', status: 'Alumni' },
+  '4th Year': { nextYear: '4th Year', status: 'Inactive' },
 };
 
 export async function getSettingsDataAction(): Promise<

@@ -14,10 +14,14 @@ export default async function MyQrPage() {
     .from('students')
     .select('*')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
 
   if (!student) {
-    return <div className="p-6 text-center text-xs text-slate-500">Student record not found.</div>;
+    return (
+      <div className="p-8 bg-white border border-[#E5EBE5] rounded-3xl text-center text-xs text-slate-500 shadow-xs">
+        Student record not found. Please contact an officer or administrator.
+      </div>
+    );
   }
 
   return (
