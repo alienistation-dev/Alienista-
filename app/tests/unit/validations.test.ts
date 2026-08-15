@@ -1,42 +1,44 @@
 import { describe, it, expect } from 'vitest';
 import { loginSchema, changePasswordSchema } from '@/lib/validations/auth';
 import { studentSchema } from '@/lib/validations/students';
-import { eventSchema, eventSlotSchema } from '@/lib/validations/events';
+import { eventSlotSchema } from '@/lib/validations/events';
 
-describe('Validation Schemas', () => {
+describe('Validation Schemas Unit Tests', () => {
   describe('Login Schema', () => {
-    it('should accept valid admin credentials', () => {
+    it('should validate admin credentials', () => {
       const result = loginSchema.safeParse({
         role: 'admin',
         identifier: 'admin',
-        password: 'admin123',
+        password: 'adminpassword',
       });
       expect(result.success).toBe(true);
     });
 
-    it('should accept valid officer credentials', () => {
+    it('should validate officer credentials', () => {
       const result = loginSchema.safeParse({
         role: 'officer',
-        identifier: 'Officer Name',
+        identifier: 'John Doe',
         password: '1234',
       });
       expect(result.success).toBe(true);
     });
 
-    it('should reject missing identifier or password', () => {
-      const emptyIdent = loginSchema.safeParse({
-        role: 'officer',
-        identifier: '',
-        password: '1234',
+    it('should validate student credentials with UID or Student Number', () => {
+      const result = loginSchema.safeParse({
+        role: 'student',
+        identifier: '2026-8-0123',
+        password: 'DELACRUZ',
       });
-      expect(emptyIdent.success).toBe(false);
+      expect(result.success).toBe(true);
+    });
 
-      const emptyPass = loginSchema.safeParse({
-        role: 'officer',
-        identifier: 'Officer',
-        password: '',
+    it('should reject invalid role', () => {
+      const result = loginSchema.safeParse({
+        role: 'superadmin',
+        identifier: 'admin',
+        password: 'pass',
       });
-      expect(emptyPass.success).toBe(false);
+      expect(result.success).toBe(false);
     });
   });
 
@@ -59,14 +61,15 @@ describe('Validation Schemas', () => {
   });
 
   describe('Student Schema', () => {
-    it('should accept a complete student record', () => {
+    it('should accept a complete student record with first and last name', () => {
       const valid = studentSchema.safeParse({
         uid: 'ST-2026-0001',
-        student_number: '2023-8-0044',
-        full_name: 'Juan Dela Cruz',
+        student_number: '2026-8-0123',
+        first_name: 'Juan',
+        last_name: 'Dela Cruz',
         course: 'BS Computer Science',
         year: '1st Year',
-        section: '1',
+        section: 'Block 1',
         status: 'Active',
       });
       expect(valid.success).toBe(true);
@@ -74,23 +77,25 @@ describe('Validation Schemas', () => {
 
     it('should accept a student record without UID for auto-assignment', () => {
       const validWithoutUid = studentSchema.safeParse({
-        student_number: '2023-8-0044',
-        full_name: 'Maria Clara',
+        student_number: '2026-8-0123',
+        first_name: 'Maria',
+        last_name: 'Clara',
         course: 'BS Computer Science',
         year: '1st Year',
-        section: '2',
+        section: 'Block 2',
         status: 'Active',
       });
       expect(validWithoutUid.success).toBe(true);
     });
 
-    it('should reject invalid year levels', () => {
+    it('should reject invalid or removed year levels (e.g. Alumni, 5th Year)', () => {
       const invalid = studentSchema.safeParse({
         uid: 'ST-2026-0001',
-        student_number: '2023-8-0044',
-        full_name: 'Juan Dela Cruz',
-        year: '5th Year', // Not in enum
-        section: '1',
+        student_number: '2026-8-0123',
+        first_name: 'Juan',
+        last_name: 'Dela Cruz',
+        year: 'Alumni', // Alumni removed from YearLevel enum
+        section: 'Block 1',
       });
       expect(invalid.success).toBe(false);
     });

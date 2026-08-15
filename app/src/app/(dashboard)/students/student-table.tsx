@@ -17,6 +17,7 @@ import {
   Edit2,
   Trash2,
   KeyRound,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface StudentTableProps {
@@ -24,7 +25,8 @@ interface StudentTableProps {
   userRole: string;
 }
 
-const YEARS: YearLevel[] = ['1st Year', '2nd Year', '3rd Year', '4th Year', 'Alumni'];
+const YEARS: YearLevel[] = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
+const BLOCKS = ['Block 1', 'Block 2', 'Block 3', 'Block 4'];
 
 export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
   const [students, setStudents] = useState<Student[]>(initialStudents);
@@ -42,12 +44,16 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
   const [formData, setFormData] = useState({
     uid: '',
     student_number: '',
-    full_name: '',
+    first_name: '',
+    last_name: '',
     course: 'BS Computer Science',
     year: '1st Year' as YearLevel,
-    section: '1',
+    section: 'Block 1',
     status: 'Active' as MemberStatus,
   });
+
+  // Delete Confirmation Modal State
+  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
 
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
     setToast({ msg, type });
@@ -75,10 +81,11 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
     setFormData({
       uid: '',
       student_number: '',
-      full_name: '',
+      first_name: '',
+      last_name: '',
       course: 'BS Computer Science',
       year: '1st Year',
-      section: '1',
+      section: 'Block 1',
       status: 'Active',
     });
     setIsModalOpen(true);
@@ -86,13 +93,24 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
 
   const handleOpenEdit = (st: Student) => {
     setEditingStudent(st);
+
+    // Split name if not stored separately
+    let fn = st.first_name || '';
+    let ln = st.last_name || '';
+    if (!fn || !ln) {
+      const parts = st.full_name.trim().split(' ');
+      ln = parts.pop() || '';
+      fn = parts.join(' ') || ln;
+    }
+
     setFormData({
       uid: st.uid,
       student_number: st.student_number,
-      full_name: st.full_name,
+      first_name: fn,
+      last_name: ln,
       course: st.course,
       year: st.year,
-      section: st.section,
+      section: st.section.startsWith('Block') ? st.section : `Block ${st.section}`,
       status: st.status,
     });
     setIsModalOpen(true);
@@ -107,8 +125,17 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
           showToast(res.error, 'err');
           return;
         }
+        const updatedFullName = `${formData.first_name.trim()} ${formData.last_name.trim()}`;
         setStudents((prev) =>
-          prev.map((s) => (s.id === editingStudent.id ? { ...s, ...formData } : s))
+          prev.map((s) =>
+            s.id === editingStudent.id
+              ? {
+                  ...s,
+                  ...formData,
+                  full_name: updatedFullName,
+                }
+              : s
+          )
         );
         showToast('Student updated successfully!');
       } else {
@@ -118,22 +145,23 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
           return;
         }
         setStudents((prev) => [res.data, ...prev]);
-        showToast('Student added successfully!');
+        showToast(`Student added! Default password is: ${formData.last_name.trim().toUpperCase()}`);
       }
       setIsModalOpen(false);
     });
   };
 
-  const handleDelete = (st: Student) => {
-    if (!confirm(`Are you sure you want to delete ${st.full_name}?`)) return;
+  const handleConfirmDelete = () => {
+    if (!studentToDelete) return;
     startTransition(async () => {
-      const res = await deleteStudentAction(st.id);
+      const res = await deleteStudentAction(studentToDelete.id);
       if (!res.success) {
         showToast(res.error, 'err');
         return;
       }
-      setStudents((prev) => prev.filter((s) => s.id !== st.id));
-      showToast('Student deleted.');
+      setStudents((prev) => prev.filter((s) => s.id !== studentToDelete.id));
+      showToast(`Student ${studentToDelete.full_name} deleted.`);
+      setStudentToDelete(null);
     });
   };
 
@@ -149,7 +177,7 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
   };
 
   const handleExportCsv = () => {
-    const headers = ['uid', 'student_number', 'full_name', 'course', 'year', 'section', 'status'];
+    const headers = ['UID', 'Student Number', 'Full Name', 'Course', 'Year', 'Block', 'Status'];
     const rows = filtered.map((s) => [
       `"${s.uid}"`,
       `"${s.student_number}"`,
@@ -159,7 +187,8 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
       `"${s.section}"`,
       `"${s.status}"`,
     ]);
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const csvContent =
+      'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
@@ -184,13 +213,20 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
 
       const rows = lines.slice(1).map((line) => {
         const parts = line.split(',').map((p) => p.replace(/^"|"$/g, '').trim());
+        const fullName = parts[2] || '';
+        const nameParts = fullName.split(' ');
+        const lastName = nameParts.pop() || '';
+        const firstName = nameParts.join(' ') || lastName;
+
         return {
           uid: parts[0] || '',
           student_number: parts[1] || '',
-          full_name: parts[2] || '',
+          first_name: firstName,
+          last_name: lastName,
+          full_name: fullName,
           course: parts[3] || 'BS Computer Science',
           year: (parts[4] as YearLevel) || '1st Year',
-          section: parts[5] || '1',
+          section: parts[5] || 'Block 1',
           status: (parts[6] as MemberStatus) || 'Active',
         };
       });
@@ -264,7 +300,6 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
             <option value="All">All Status</option>
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
-            <option value="Alumni">Alumni</option>
           </select>
         </div>
 
@@ -303,7 +338,7 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
               <th className="py-3.5 px-4 font-bold uppercase text-[10px] tracking-wider text-[#2D6A4F]">UID</th>
               <th className="py-3.5 px-4 font-bold uppercase text-[10px] tracking-wider">Student No.</th>
               <th className="py-3.5 px-4 font-bold uppercase text-[10px] tracking-wider">Full Name</th>
-              <th className="py-3.5 px-4 font-bold uppercase text-[10px] tracking-wider">Year & Section</th>
+              <th className="py-3.5 px-4 font-bold uppercase text-[10px] tracking-wider">Year & Block</th>
               <th className="py-3.5 px-4 font-bold uppercase text-[10px] tracking-wider">Status</th>
               {userRole === 'admin' && <th className="py-3.5 px-4 font-bold uppercase text-[10px] tracking-wider text-right">Actions</th>}
             </tr>
@@ -321,7 +356,7 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
                   <td className="py-3 px-4 font-mono font-bold text-[#1B4332]">{st.uid}</td>
                   <td className="py-3 px-4 font-mono text-slate-600">{st.student_number}</td>
                   <td className="py-3 px-4 font-bold text-slate-900">{st.full_name}</td>
-                  <td className="py-3 px-4 text-slate-600">{st.year} · Sec. {st.section}</td>
+                  <td className="py-3 px-4 text-slate-600">{st.year} · {st.section}</td>
                   <td className="py-3 px-4">
                     <span
                       className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
@@ -351,7 +386,7 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => handleDelete(st)}
+                          onClick={() => setStudentToDelete(st)}
                           title="Delete Student"
                           className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-lg transition-colors"
                         >
@@ -390,7 +425,7 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
               </div>
               <div>
                 <div className="text-sm font-bold text-slate-900">{st.full_name}</div>
-                <div className="text-xs text-slate-500 mt-0.5">{st.student_number} · {st.year} (Sec. {st.section})</div>
+                <div className="text-xs text-slate-500 mt-0.5">{st.student_number} · {st.year} ({st.section})</div>
               </div>
               {userRole === 'admin' && (
                 <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5EBE5]">
@@ -398,7 +433,7 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
                     onClick={() => handleResetPass(st)}
                     className="text-[11px] text-[#2D6A4F] font-bold hover:underline flex items-center gap-1"
                   >
-                    <KeyRound className="w-3 h-3" /> Reset PIN
+                    <KeyRound className="w-3 h-3" /> Reset Pass
                   </button>
                   <button
                     onClick={() => handleOpenEdit(st)}
@@ -407,7 +442,7 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
                     <Edit2 className="w-3 h-3" /> Edit
                   </button>
                   <button
-                    onClick={() => handleDelete(st)}
+                    onClick={() => setStudentToDelete(st)}
                     className="text-[11px] text-red-600 font-semibold hover:underline flex items-center gap-1 ml-2"
                   >
                     <Trash2 className="w-3 h-3" /> Delete
@@ -464,7 +499,7 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Student Number (e.g. 2023-8-0044)</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Student Number (e.g. 2026-8-0123)</label>
                 <input
                   type="text"
                   required
@@ -473,16 +508,38 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
                   className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.full_name}
-                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                  className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900"
-                />
+
+              {/* Separate First Name & Last Name */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">First Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Juan"
+                    value={formData.first_name}
+                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                    className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Last Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Dela Cruz"
+                    value={formData.last_name}
+                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                    className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900"
+                  />
+                </div>
               </div>
+              {!editingStudent && formData.last_name && (
+                <p className="text-[11px] text-[#2D6A4F] font-semibold bg-[#EBF5EE] p-2 rounded-xl border border-[#C2E0CC]">
+                  Default Password: <b>{formData.last_name.trim().toUpperCase()}</b>
+                </p>
+              )}
+
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Year Level</label>
@@ -497,16 +554,19 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Section</label>
-                  <input
-                    type="text"
-                    required
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Block</label>
+                  <select
                     value={formData.section}
                     onChange={(e) => setFormData({ ...formData, section: e.target.value })}
-                    className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900"
-                  />
+                    className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-2 py-2 text-xs text-slate-900"
+                  >
+                    {BLOCKS.map((b) => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Status</label>
                 <select
@@ -516,7 +576,6 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
                 >
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
-                  <option value="Alumni">Alumni</option>
                 </select>
               </div>
 
@@ -537,6 +596,38 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {studentToDelete && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-[#E5EBE5] rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-2.5 text-red-600 font-bold text-base">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+              <span>Delete Student Record?</span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Are you sure you want to delete <b>{studentToDelete.full_name}</b> ({studentToDelete.uid})? This will permanently remove their membership and cannot be undone.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setStudentToDelete(null)}
+                className="px-4 py-2 rounded-xl text-xs text-slate-500 hover:text-slate-800 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition-colors shadow-xs"
+              >
+                {isPending ? 'Deleting...' : 'Confirm Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}

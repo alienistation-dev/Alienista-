@@ -124,7 +124,7 @@ export async function loginAction(rawInput: unknown): Promise<ActionResponse<Ses
       .select('id, organization_id, uid, student_number, full_name, first_name, last_name, password_hash, is_first_login, status')
       .or(`uid.ilike.${identifier.trim()},student_number.ilike.${identifier.trim()}`)
       .eq('status', 'Active')
-      .single();
+      .maybeSingle();
 
     if (!student) {
       recordFailedAttempt(lookupKey);
@@ -150,14 +150,16 @@ export async function loginAction(rawInput: unknown): Promise<ActionResponse<Ses
       return { success: false, error: 'Incorrect student credentials.' };
     }
 
+    const orgId = await getEffectiveOrgId(student.organization_id);
+
     const sessionUser: SessionUser = {
       id: student.id,
-      organization_id: student.organization_id,
+      organization_id: orgId,
       role: 'student',
       name: student.full_name,
       uid: student.uid,
       student_number: student.student_number,
-      must_change_password: student.is_first_login,
+      must_change_password: Boolean(student.is_first_login),
     };
 
     await setSessionCookie(sessionUser);
@@ -183,9 +185,9 @@ export async function changeStudentPasswordAction(rawInput: unknown): Promise<Ac
 
   const { data: student } = await admin
     .from('students')
-    .select('id, last_name, full_name, password_hash, is_first_login')
+    .select('id, organization_id, last_name, first_name, full_name, uid, student_number, password_hash, is_first_login')
     .or(`uid.ilike.${identifier.trim()},student_number.ilike.${identifier.trim()}`)
-    .single();
+    .maybeSingle();
 
   if (!student) {
     return { success: false, error: 'Student not found.' };
@@ -216,6 +218,19 @@ export async function changeStudentPasswordAction(rawInput: unknown): Promise<Ac
   if (error) {
     return { success: false, error: 'Failed to update password.' };
   }
+
+  // Update session cookie immediately so must_change_password is false
+  const orgId = await getEffectiveOrgId(student.organization_id);
+  const sessionUser: SessionUser = {
+    id: student.id,
+    organization_id: orgId,
+    role: 'student',
+    name: student.full_name,
+    uid: student.uid,
+    student_number: student.student_number,
+    must_change_password: false,
+  };
+  await setSessionCookie(sessionUser);
 
   return { success: true, data: undefined, message: 'Password updated successfully!' };
 }

@@ -36,7 +36,7 @@ const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
     badge: 'Student Portal',
     icon: GraduationCap,
     identifierLabel: 'Student UID or Student Number',
-    identifierPlaceholder: 'e.g. ST-2026-0001 or 2023-8-0044',
+    identifierPlaceholder: 'e.g. ST-2026-0001 or 2026-8-0123',
     secretLabel: 'Student Password',
     secretPlaceholder: '••••••••',
     helperText: 'Default password is your LAST NAME in CAPITAL letters.',

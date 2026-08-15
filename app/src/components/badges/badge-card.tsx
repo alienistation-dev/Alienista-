@@ -19,6 +19,8 @@ export function BadgeCard({ student }: { student: Student }) {
     }).then(setQrDataUrl);
   }, [student.uid]);
 
+  const blockLabel = student.section.startsWith('Block') ? student.section : `Block ${student.section}`;
+
   const handleDownloadPng = () => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -63,10 +65,10 @@ export function BadgeCard({ student }: { student: Student }) {
     ctx.lineTo(470, 165);
     ctx.stroke();
 
-    // Section & Status
+    // Block & Status
     ctx.fillStyle = '#D4AF37';
     ctx.font = 'bold 14px sans-serif';
-    ctx.fillText(`Section ${student.section} · ${student.status}`, 30, 195);
+    ctx.fillText(`${blockLabel} · ${student.status}`, 30, 195);
 
     // White QR Container Box
     ctx.fillStyle = '#F8FAF9';
@@ -103,11 +105,11 @@ export function BadgeCard({ student }: { student: Student }) {
 
         ctx.fillStyle = '#2D6A4F';
         ctx.font = 'bold 11px sans-serif';
-        ctx.fillText('SECTION', infoX, 420);
+        ctx.fillText('BLOCK', infoX, 420);
 
         ctx.fillStyle = '#4B5563';
         ctx.font = '14px sans-serif';
-        ctx.fillText(`Sec. ${student.section}`, infoX, 444);
+        ctx.fillText(blockLabel, infoX, 444);
 
         // Footer
         ctx.strokeStyle = '#E5EBE5';
@@ -160,8 +162,8 @@ export function BadgeCard({ student }: { student: Student }) {
             <div className="font-mono text-slate-700 text-[11px]">{student.student_number}</div>
           </div>
           <div>
-            <div className="text-[9px] uppercase tracking-wider font-bold text-[#2D6A4F]">Section</div>
-            <div className="text-slate-700 text-[11px]">Sec. {student.section}</div>
+            <div className="text-[9px] uppercase tracking-wider font-bold text-[#2D6A4F]">Block</div>
+            <div className="text-slate-700 text-[11px]">{blockLabel}</div>
           </div>
         </div>
       </div>

@@ -9,7 +9,7 @@ import {
   advanceSemesterAction,
   updateAdminCredentialsAction,
 } from '@/lib/actions/settings';
-import { Settings, Shield, UserCheck, Plus, Trash2, KeyRound, ArrowRight, Save } from 'lucide-react';
+import { Settings, Shield, UserCheck, Plus, Trash2, KeyRound, ArrowRight, Save, AlertTriangle } from 'lucide-react';
 
 export function SettingsView({
   initialSettings,
@@ -27,8 +27,10 @@ export function SettingsView({
   const [officerName, setOfficerName] = useState('');
   const [officerPin, setOfficerPin] = useState('');
 
-  // Reset PIN modal
+  // Modals
   const [resetModalOfficer, setResetModalOfficer] = useState<Officer | null>(null);
+  const [officerToDelete, setOfficerToDelete] = useState<Officer | null>(null);
+  const [showAdvanceModal, setShowAdvanceModal] = useState(false);
   const [newPin, setNewPin] = useState('');
 
   // Admin Credentials Form
@@ -96,27 +98,21 @@ export function SettingsView({
     });
   };
 
-  const handleDeleteOfficer = (o: Officer) => {
-    if (!confirm(`Delete officer account "${o.name}"?`)) return;
+  const handleConfirmDeleteOfficer = () => {
+    if (!officerToDelete) return;
     startTransition(async () => {
-      const res = await deleteOfficerAction(o.id);
+      const res = await deleteOfficerAction(officerToDelete.id);
       if (!res.success) {
         showToast(res.error, 'err');
         return;
       }
-      setOfficers((prev) => prev.filter((item) => item.id !== o.id));
-      showToast(`Officer ${o.name} removed.`);
+      setOfficers((prev) => prev.filter((item) => item.id !== officerToDelete.id));
+      showToast(`Officer ${officerToDelete.name} removed.`);
+      setOfficerToDelete(null);
     });
   };
 
-  const handleAdvanceSemester = () => {
-    const isPromotion = settings.semester === 'Second Semester';
-    const confirmMsg = isPromotion
-      ? 'Start next Academic Year & Promote Students?\n\nAll active students will advance one year level (4th Year → Alumni). Attendance records will be preserved.'
-      : 'Advance to Second Semester of current Academic Year?\n\nStudent year levels will remain unchanged.';
-
-    if (!confirm(confirmMsg)) return;
-
+  const handleConfirmAdvanceSemester = () => {
     startTransition(async () => {
       const res = await advanceSemesterAction();
       if (!res.success) {
@@ -124,6 +120,7 @@ export function SettingsView({
         return;
       }
       showToast(res.data.message);
+      setShowAdvanceModal(false);
       window.location.reload();
     });
   };
@@ -233,7 +230,7 @@ export function SettingsView({
             )}
           </div>
           <button
-            onClick={handleAdvanceSemester}
+            onClick={() => setShowAdvanceModal(true)}
             disabled={isPending}
             className="px-4 py-2 bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shrink-0 transition-colors shadow-xs"
           >
@@ -316,7 +313,7 @@ export function SettingsView({
                           <KeyRound className="w-3 h-3" /> Reset PIN
                         </button>
                         <button
-                          onClick={() => handleDeleteOfficer(o)}
+                          onClick={() => setOfficerToDelete(o)}
                           className="text-[11px] text-red-600 font-bold hover:underline flex items-center gap-1 ml-2"
                         >
                           <Trash2 className="w-3 h-3" /> Remove
@@ -330,6 +327,72 @@ export function SettingsView({
           </table>
         </div>
       </div>
+
+      {/* Advance Term Confirmation Modal */}
+      {showAdvanceModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-[#E5EBE5] rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-2.5 text-[#1B4332] font-bold text-base">
+              <AlertTriangle className="w-5 h-5 text-amber-600" />
+              <span>Confirm Academic Term Advancement</span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              {settings.semester === 'First Semester'
+                ? 'Advance to Second Semester of the current Academic Year? Student year levels will remain unchanged, and historical logs will be preserved.'
+                : 'Start the next Academic Year (First Semester)? All active students will advance one year level (1st → 2nd → 3rd → 4th).'}
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowAdvanceModal(false)}
+                className="px-4 py-2 rounded-xl text-xs text-slate-500 hover:text-slate-800 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={handleConfirmAdvanceSemester}
+                className="px-4 py-2 bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold text-xs rounded-xl transition-colors shadow-xs"
+              >
+                {isPending ? 'Advancing...' : 'Confirm Advance'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Remove Officer Modal */}
+      {officerToDelete && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-[#E5EBE5] rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-2.5 text-red-600 font-bold text-base">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+              <span>Remove Officer Account?</span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Are you sure you want to remove <b>{officerToDelete.name}</b>? They will no longer be able to sign in for scanning duty.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setOfficerToDelete(null)}
+                className="px-4 py-2 rounded-xl text-xs text-slate-500 hover:text-slate-800 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={handleConfirmDeleteOfficer}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition-colors shadow-xs"
+              >
+                {isPending ? 'Removing...' : 'Confirm Remove'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reset PIN Modal */}
       {resetModalOfficer && (

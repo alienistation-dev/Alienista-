@@ -279,7 +279,6 @@ export function ScannerView({ events, students, userRole, officerName, officerId
               </button>
               <button
                 onClick={() => setCameraActive((a) => !a)}
-                disabled={openEvents.length === 0}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors ${
                   cameraActive
                     ? 'bg-red-50 text-red-700 border border-red-200'

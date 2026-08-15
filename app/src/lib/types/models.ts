@@ -1,10 +1,10 @@
 export type UserRole = 'admin' | 'officer' | 'student';
-export type MemberStatus = 'Active' | 'Inactive' | 'Alumni';
+export type MemberStatus = 'Active' | 'Inactive';
 export type EventStatus = 'Open' | 'Closed';
 export type SlotType = 'am_in' | 'am_out' | 'pm_in' | 'pm_out' | 'other';
 export type SlotStatus = 'upcoming' | 'active' | 'closed';
 export type SemesterType = 'First Semester' | 'Second Semester';
-export type YearLevel = '1st Year' | '2nd Year' | '3rd Year' | '4th Year' | 'Alumni';
+export type YearLevel = '1st Year' | '2nd Year' | '3rd Year' | '4th Year';
 export type SyncStatus = 'pending_offline' | 'synced' | 'duplicate' | 'invalid' | 'error';
 
 export interface Organization {
@@ -28,8 +28,8 @@ export interface Student {
   organization_id: string;
   uid: string;
   student_number: string;
-  first_name: string;
-  last_name: string;
+  first_name?: string;
+  last_name?: string;
   full_name: string;
   course: string;
   year: YearLevel;
