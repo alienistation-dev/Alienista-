@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { PwaInstallPrompt } from "@/components/pwa/pwa-install-prompt";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,11 +19,16 @@ export const metadata: Metadata = {
     template: "%s | Alienista",
   },
   description: "Alienista · Association of Computer Scientists Attendance Management System · Palawan State University",
+  manifest: "/manifest.json",
   icons: {
-    icon: "/icon-192.png",
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
     shortcut: "/icon-192.png",
-    apple: "/icon-512.png",
+    apple: "/icon-192.png",
   },
+  appleWebApp: { capable: true, title: "Alienista", statusBarStyle: "default" },
 };
 
 export default function RootLayout({
@@ -35,7 +41,10 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <PwaInstallPrompt />
+      </body>
     </html>
   );
 }

@@ -4,12 +4,19 @@ import React, { useState } from 'react';
 import { BadgeStudent } from '@/lib/types/models';
 import { BadgeCard } from '@/components/badges/badge-card';
 import { buildBadgeData } from '@/lib/badges/badge';
+import {
+  buildBadgePrintDocument,
+  buildBadgePrintLoadingDocument,
+  openBadgePrintWindow,
+} from '@/lib/badges/print-badges';
 import { Search, Printer, LoaderCircle } from 'lucide-react';
 
 export function QrGeneratorView({ students }: { students: BadgeStudent[] }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
+  const [printProgress, setPrintProgress] = useState(0);
+  const [printError, setPrintError] = useState('');
   const perPage = 8;
 
   const filtered = students.filter((s) => {
@@ -26,24 +33,32 @@ export function QrGeneratorView({ students }: { students: BadgeStudent[] }) {
 
   const handlePrintAll = async () => {
     if (filtered.length === 0 || isPreparingPrint) return;
+    setPrintError('');
+    const printWindow = openBadgePrintWindow();
+    if (!printWindow) {
+      setPrintError('Printing was blocked. Allow pop-ups for this site, then try again.');
+      return;
+    }
+
     setIsPreparingPrint(true);
+    setPrintProgress(0);
     try {
-      const { renderBadgeToDataUrl } = await import('@/lib/badges/render-badge');
-      const imageUrls = await Promise.all(filtered.map((student) => renderBadgeToDataUrl(buildBadgeData(student))));
-      const printWindow = window.open('', '_blank', 'noopener,noreferrer');
-      if (!printWindow) throw new Error('The print window was blocked by the browser.');
-      printWindow.document.write(`<!doctype html><html><head><title>Alienista badges</title><style>
-        @page { size: A4 portrait; margin: 10mm; }
-        * { box-sizing: border-box; }
-        body { margin: 0; font-family: Arial, sans-serif; }
-        main { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8mm; }
-        img { width: 100%; height: auto; break-inside: avoid; border: 1px solid #E5EBE5; }
-      </style></head><body><main>${imageUrls.map((url, index) => `<img src="${url}" alt="Badge ${index + 1}">`).join('')}</main></body></html>`);
+      printWindow.document.write(buildBadgePrintLoadingDocument());
       printWindow.document.close();
-      printWindow.onload = () => {
-        printWindow.focus();
-        printWindow.print();
-      };
+
+      const { renderBadgeToDataUrl } = await import('@/lib/badges/render-badge');
+      const imageUrls: string[] = [];
+      for (const [index, student] of filtered.entries()) {
+        imageUrls.push(await renderBadgeToDataUrl(buildBadgeData(student)));
+        setPrintProgress(index + 1);
+      }
+
+      printWindow.document.open();
+      printWindow.document.write(buildBadgePrintDocument(imageUrls));
+      printWindow.document.close();
+    } catch {
+      printWindow.close();
+      setPrintError('Badge preparation failed. Close the print tab and try again.');
     } finally {
       setIsPreparingPrint(false);
     }
@@ -76,6 +91,16 @@ export function QrGeneratorView({ students }: { students: BadgeStudent[] }) {
           <span>{isPreparingPrint ? 'Preparing All Badges' : 'Print / Save PDF'}</span>
         </button>
       </div>
+      {isPreparingPrint && (
+        <p className="text-xs text-slate-500" role="status" aria-live="polite">
+          Preparing badge {printProgress} of {filtered.length}...
+        </p>
+      )}
+      {printError && (
+        <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2" role="alert">
+          {printError}
+        </p>
+      )}
 
       {/* Badges Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

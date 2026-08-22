@@ -132,3 +132,12 @@
 - Added a regression test asserting event reads remain organization-scoped and do not select `term_key` before the migration is applied.
 - Verification after the compatibility fix: `npm test` passed with 61 tests across 18 files; focused TypeScript and ESLint checks passed; `npm run build` passed from `app`.
 - Full lint remains blocked by three pre-existing `no-explicit-any` errors and eight warnings outside this fix.
+
+### Badge Printing and PWA Installability Fix
+
+- Fixed mass badge printing being blocked by opening the print tab synchronously from the click handler before lazy badge rendering begins.
+- Added printable-document helpers, progress feedback, and actionable popup/rendering failure states.
+- Added installable PNG icons and manifest metadata, registered `/sw.js` from the client shell, and added a native `beforeinstallprompt` install prompt with dismissal and app-installed handling.
+- Install prompts remain browser/platform controlled: Chromium exposes `beforeinstallprompt`; Safari and some embedded browsers may require their own Add to Home Screen flow.
+- Added regression tests for synchronous print-window opening, printable output, and manifest icon requirements.
+- The final print document now invokes the browser-native print dialog from its own `load` event after the badge images are written, instead of relying on a parent-window load callback.
