@@ -4,10 +4,16 @@ import bcrypt from 'bcryptjs';
 import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/session';
 import { ActionResponse } from '@/lib/types/actions';
-import { Student } from '@/lib/types/models';
+import { BadgeStudent, MemberStatus, ScannerStudent, Student, YearLevel } from '@/lib/types/models';
 import { studentSchema } from '@/lib/validations/students';
 import { revalidatePath } from 'next/cache';
 import { allocateStudentUid } from '@/lib/students/uid';
+import { withServerTiming } from '@/lib/server-timing';
+
+const STUDENT_PROJECTION = 'id, organization_id, uid, student_number, first_name, last_name, full_name, course, year, section, status, is_first_login, avatar_url, created_at, updated_at';
+
+const SCANNER_PROJECTION = 'id, organization_id, uid, student_number, full_name, status, avatar_url';
+const BADGE_PROJECTION = 'id, uid, student_number, full_name, course, year, section, status, avatar_url';
 
 export async function getStudentsAction(): Promise<ActionResponse<Student[]>> {
   const user = await getSessionUser();
@@ -15,14 +21,34 @@ export async function getStudentsAction(): Promise<ActionResponse<Student[]>> {
 
   const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
-  const { data, error } = await admin
+  const { data, error } = await withServerTiming('students', async () => admin
     .from('students')
-    .select('*')
+    .select(STUDENT_PROJECTION)
     .eq('organization_id', orgId)
-    .order('full_name', { ascending: true });
+    .order('full_name', { ascending: true }));
 
   if (error) return { success: false, error: error.message };
   return { success: true, data: data as Student[] };
+}
+
+export async function getScannerStudentsAction(): Promise<ActionResponse<ScannerStudent[]>> {
+  const user = await getSessionUser();
+  if (!user) return { success: false, error: 'Unauthorized' };
+  const orgId = await getEffectiveOrgId(user.organization_id);
+  const admin = createAdminClient();
+  const { data, error } = await admin.from('students').select(SCANNER_PROJECTION).eq('organization_id', orgId).eq('status', 'Active').order('full_name', { ascending: true });
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: (data || []) as ScannerStudent[] };
+}
+
+export async function getBadgeStudentsAction(): Promise<ActionResponse<BadgeStudent[]>> {
+  const user = await getSessionUser();
+  if (!user) return { success: false, error: 'Unauthorized' };
+  const orgId = await getEffectiveOrgId(user.organization_id);
+  const admin = createAdminClient();
+  const { data, error } = await admin.from('students').select(BADGE_PROJECTION).eq('organization_id', orgId).order('full_name', { ascending: true });
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: (data || []) as BadgeStudent[] };
 }
 
 export async function createStudentAction(rawInput: unknown): Promise<ActionResponse<Student>> {
@@ -91,7 +117,7 @@ export async function updateStudentAction(id: string, rawInput: unknown): Promis
   const lastName = parsed.data.last_name.trim();
   const computedFullName = `${firstName} ${lastName}`;
 
-  const updatePayload: Record<string, any> = {
+  const updatePayload: Record<string, unknown> = {
     student_number: parsed.data.student_number.trim(),
     first_name: firstName,
     last_name: lastName,
@@ -178,9 +204,9 @@ export async function uploadStudentAvatarAction(formData: FormData): Promise<Act
       .getPublicUrl(filePath);
 
     return { success: true, data: { publicUrl } };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('uploadStudentAvatarAction error:', err);
-    return { success: false, error: err?.message || 'Failed to upload student photo.' };
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to upload student photo.' };
   }
 }
 
@@ -240,9 +266,9 @@ export async function bulkImportStudentsCsvAction(
     last_name?: string;
     full_name?: string;
     course?: string;
-    year: any;
+    year: YearLevel;
     section: string;
-    status?: any;
+    status?: MemberStatus;
   }>
 ): Promise<ActionResponse<{ imported: number; failed: number; errors: string[] }>> {
   const user = await getSessionUser();

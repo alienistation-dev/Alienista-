@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useTransition } from 'react';
-import { Event, Student } from '@/lib/types/models';
+import { Event, ScannerStudent } from '@/lib/types/models';
 import { recordScanAction } from '@/lib/actions/attendance';
 import { QrScannerComponent } from '@/components/scanner/qr-scanner';
 import { ManualOverrideDialog } from '@/components/scanner/manual-override-dialog';
@@ -25,7 +25,7 @@ import {
 
 interface ScannerViewProps {
   events: Event[];
-  students: Student[];
+  students: ScannerStudent[];
   userRole: string;
   officerName: string;
   officerId: string;

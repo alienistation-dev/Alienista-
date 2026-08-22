@@ -53,3 +53,5 @@ This document records the choices made from the Chrome, Edge, localhost, ngrok, 
 - Replace blanket public grants with minimum grants and review RLS, views, security-definer helpers, storage policies, and default privileges.
 - Replace broad roster/statistics reads with scoped projections or aggregates.
 - Measure production latency, query count, payload size, and mobile behavior before setting targets.
+- Navigation performance targets are warm-local feedback within 100 ms and normal content within approximately 1 second. First-visit Turbopack compilation is measured separately as cold-start overhead.
+- Use shell-first route loading, skeletons, fresh server reads, request-level session memoization, narrow projections, and on-demand camera/badge modules rather than introducing a persistent client data cache.

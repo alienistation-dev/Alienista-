@@ -1,13 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Student } from '@/lib/types/models';
+import { BadgeStudent } from '@/lib/types/models';
 import { BadgeCard } from '@/components/badges/badge-card';
 import { buildBadgeData } from '@/lib/badges/badge';
-import { renderBadgeToDataUrl } from '@/lib/badges/render-badge';
 import { Search, Printer, LoaderCircle } from 'lucide-react';
 
-export function QrGeneratorView({ students }: { students: Student[] }) {
+export function QrGeneratorView({ students }: { students: BadgeStudent[] }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
@@ -29,6 +28,7 @@ export function QrGeneratorView({ students }: { students: Student[] }) {
     if (filtered.length === 0 || isPreparingPrint) return;
     setIsPreparingPrint(true);
     try {
+      const { renderBadgeToDataUrl } = await import('@/lib/badges/render-badge');
       const imageUrls = await Promise.all(filtered.map((student) => renderBadgeToDataUrl(buildBadgeData(student))));
       const printWindow = window.open('', '_blank', 'noopener,noreferrer');
       if (!printWindow) throw new Error('The print window was blocked by the browser.');

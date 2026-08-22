@@ -1,4 +1,5 @@
 import { cookies, headers } from 'next/headers';
+import { cache } from 'react';
 import { SessionUser } from '@/lib/types/actions';
 import { env, isSecureOrigin } from '@/lib/env';
 
@@ -100,12 +101,12 @@ export async function setSessionCookie(user: SessionUser) {
   });
 }
 
-export async function getSessionUser(): Promise<SessionUser | null> {
+export const getSessionUser = cache(async function getSessionUser(): Promise<SessionUser | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   if (!token) return null;
   return verifySession(token);
-}
+});
 
 export async function clearSessionCookie() {
   const cookieStore = await cookies();

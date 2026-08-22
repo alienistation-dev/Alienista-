@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
+import { NavigationLink } from './navigation-link';
 import { usePathname } from 'next/navigation';
 import { SessionUser } from '@/lib/types/actions';
 import Image from 'next/image';
@@ -52,7 +52,7 @@ export function Sidebar({ user }: { user: SessionUser }) {
           const Icon = item.icon;
           const isActive = pathname === item.href;
           return (
-            <Link
+            <NavigationLink
               key={item.href}
               href={item.href}
               className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
@@ -63,7 +63,7 @@ export function Sidebar({ user }: { user: SessionUser }) {
             >
               <Icon className={`w-4 h-4 ${isActive ? 'text-[#2D6A4F]' : 'text-slate-500'}`} />
               {item.label}
-            </Link>
+            </NavigationLink>
           );
         })}
       </nav>

@@ -1,4 +1,4 @@
-import type { BadgeData, Student } from '@/lib/types/models';
+import type { BadgeData, BadgeStudent } from '@/lib/types/models';
 
 export const BADGE_SPEC = {
   width: 400,
@@ -18,7 +18,7 @@ export const BADGE_SPEC = {
   },
 } as const;
 
-export function buildBadgeData(student: Student): BadgeData {
+export function buildBadgeData(student: BadgeStudent): BadgeData {
   const section = student.section || '1';
   return {
     qr_payload: student.uid,

@@ -3,17 +3,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Download } from 'lucide-react';
 import { buildBadgeData, buildBadgeFilename } from '@/lib/badges/badge';
-import { renderBadgeToDataUrl } from '@/lib/badges/render-badge';
-import type { Student } from '@/lib/types/models';
+import type { BadgeStudent } from '@/lib/types/models';
 
-export function BadgeCard({ student, showDownload = true }: { student: Student; showDownload?: boolean }) {
+export function BadgeCard({ student, showDownload = true }: { student: BadgeStudent; showDownload?: boolean }) {
   const badge = useMemo(() => buildBadgeData(student), [student]);
   const [badgeDataUrl, setBadgeDataUrl] = useState('');
   const [renderError, setRenderError] = useState(false);
 
   useEffect(() => {
     let active = true;
-    renderBadgeToDataUrl(badge)
+    import('@/lib/badges/render-badge').then(({ renderBadgeToDataUrl }) => renderBadgeToDataUrl(badge))
       .then((url) => {
         if (active) setBadgeDataUrl(url);
       })

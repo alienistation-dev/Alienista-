@@ -112,6 +112,9 @@ export interface Student {
   updated_at: string;
 }
 
+export type ScannerStudent = Pick<Student, 'id' | 'organization_id' | 'uid' | 'student_number' | 'full_name' | 'status' | 'avatar_url'>;
+export type BadgeStudent = Pick<Student, 'id' | 'uid' | 'student_number' | 'full_name' | 'course' | 'year' | 'section' | 'status' | 'avatar_url'>;
+
 export interface Officer {
   id: string;
   organization_id: string;
@@ -145,7 +148,8 @@ export interface Event {
   description: string;
   status: EventStatus;
   weight: EventWeight;
-  term_key: string;
+  /** Added by the Phase 5 migration; optional during rolling deployment. */
+  term_key?: string;
   created_by_officer_id?: string | null;
   slots?: EventSlot[];
   created_at: string;

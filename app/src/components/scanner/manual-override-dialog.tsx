@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
-import { Student, Event } from '@/lib/types/models';
+import { ScannerStudent, Event } from '@/lib/types/models';
 import { manualAttendanceOverrideAction } from '@/lib/actions/attendance';
 import { UserCheck, Search } from 'lucide-react';
 
 interface ManualOverrideProps {
-  students: Student[];
+  students: ScannerStudent[];
   events: Event[];
   isOpen: boolean;
   onClose: () => void;

@@ -7,6 +7,7 @@ import { ActionResponse } from '@/lib/types/actions';
 import { Event } from '@/lib/types/models';
 import { eventSchema } from '@/lib/validations/events';
 import { revalidatePath } from 'next/cache';
+import { withServerTiming } from '@/lib/server-timing';
 
 export async function getEventsAction(): Promise<ActionResponse<Event[]>> {
   const user = await getSessionUser();
@@ -14,11 +15,11 @@ export async function getEventsAction(): Promise<ActionResponse<Event[]>> {
 
   const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
-  const { data, error } = await admin
+  const { data, error } = await withServerTiming('events', async () => admin
     .from('events')
-    .select('*, slots:event_slots(*)')
+    .select('id, organization_id, name, starts_at, venue, description, status, weight, created_by_officer_id, created_at, updated_at, slots:event_slots(id, organization_id, event_id, label, slot_type, opens_at, closes_at, late_cutoff_at, late_penalty_percent, is_required, status, created_at)')
     .eq('organization_id', orgId)
-    .order('starts_at', { ascending: false });
+    .order('starts_at', { ascending: false }));
 
   if (error) return { success: false, error: error.message };
   return { success: true, data: data as Event[] };

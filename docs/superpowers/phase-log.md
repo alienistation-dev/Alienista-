@@ -106,3 +106,29 @@
 - `npm run build` compiled successfully but failed during Next generated-type validation because the existing `.next/dev/types/validator.ts` was malformed in the restricted checkout. The generated artifact was not edited.
 - `graphify update .`: completed after the final code, SQL, and documentation changes; SQL remains unparsed because `tree_sitter_sql` is not installed.
 - `supabase db advisors`, local migration execution, Chrome/Edge, ngrok, and same-network mobile checks remain unavailable without configured external services and browser fixtures.
+
+### Navigation Responsiveness Improvements
+
+- Added dashboard and student route loading boundaries, reusable skeletons, actionable route error states, and shared pending navigation feedback.
+- Added development-only navigation and server-loader timing marks; cold Turbopack compilation remains distinct from warm navigation timing.
+- Memoized request session verification, parallelized dashboard/settings/statistics reads, removed the unused dashboard events query, and narrowed student/event/report projections.
+- Added dedicated scanner and badge student projections while preserving organization scoping and fresh reads on every navigation.
+- Deferred `html5-qrcode` until camera activation and badge canvas rendering until a badge or print operation needs it.
+- Fixed the assessments action parser error and added regression tests for loader query shape, projection shape, and request session memoization.
+
+### Navigation Verification
+
+- `npm test`: 60 tests passed across 18 files.
+- Source TypeScript verification passed with `npx tsc --noEmit --project tsconfig.verify.json`.
+- Production `npm run build`: passed after fixing the assessments parser error and validating the new route boundaries.
+- Focused navigation ESLint targets: passed.
+- Full `npm run lint` still reports three pre-existing explicit-`any` errors and eight warnings outside this navigation slice.
+- Warm unauthenticated localhost checks on the existing `http://localhost:8080` server returned 9-141 ms after warm-up for redirect/login requests; authenticated content timing and mobile browser checks remain manual smoke gates.
+
+### Schema Rollout Compatibility Fix
+
+- Removed `events.term_key` from the normal event-management projection because that column is introduced by the later Phase 5–6 migration and may be absent during rolling deployment.
+- Kept `Event.term_key` optional at the application boundary; assessment workflows still require the Phase 5–6 migration and should be enabled only after it is applied.
+- Added a regression test asserting event reads remain organization-scoped and do not select `term_key` before the migration is applied.
+- Verification after the compatibility fix: `npm test` passed with 61 tests across 18 files; focused TypeScript and ESLint checks passed; `npm run build` passed from `app`.
+- Full lint remains blocked by three pre-existing `no-explicit-any` errors and eight warnings outside this fix.
