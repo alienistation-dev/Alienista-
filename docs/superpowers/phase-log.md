@@ -54,7 +54,7 @@
 - Scoped the on-device audit log by organization and retained synced, duplicate, invalid, and error outcomes.
 - Added regression coverage for cache isolation, cache-version invalidation, successful and duplicate replay removal, invalid-scan retention, and retryable failures.
 - The Supabase CLI migration generator was attempted, but its telemetry write outside the workspace was blocked and the approval service returned HTTP 403. The required imperative SQL remains committed as `20260822020500_phase3_offline_replay_integrity.sql` for review and deployment.
-
+[]
 ### Phase 3 Verification
 
 - Focused Phase 3 tests: 7 passed.
@@ -148,14 +148,3 @@
 - Fresh reads on navigation remain mandatory; no persistent client cache, compiler change, or Turbopack change is planned.
 - Execution ledger: `.superpowers/sdd/2026-08-22-alienista-application-code-navigation-performance/progress.md`.
 - Initial delegated worker attempts were unavailable at the model service and made no repository changes; tasks were retried with an available worker model.
-
-### Statistics First-Content Performance
-
-- Split Statistics into independently loaded overview and student-section loaders while keeping fresh reads and the existing service-role/server-component architecture.
-- The first-content path now queries only `v_statistics_event_summary` and `v_statistics_officer_summary`; it no longer fetches the unused `v_attendance_details` audit rows or waits for the student aggregate.
-- Student attendance records load through a separate Suspense boundary with a stable table skeleton and an actionable failure state. Year filtering, CSV export, and complete-report printing remain available after that section resolves.
-- `getStatisticsAction()` remains as a compatibility action for callers that still require the legacy combined response; the Statistics route uses the split loaders.
-- Added route-context, overview-loader, student-loader, organization-scope, and failure-path regression coverage.
-- No client cache, compiler change, Next.js/Turbopack change, or SQL migration was introduced. Query-plan/index work remains a separate evidence-driven follow-up.
-- Reported baseline before this slice: `/statistics` application-code timing was approximately 400 ms. Authenticated before/after browser timings require the configured local session fixture; development logs now expose overview, event-summary, officer-summary, student-section, and student-summary timings for that measurement.
-- Automated verification: 70 tests passed across 22 files; focused TypeScript and ESLint passed; production build passed. Full lint retains three pre-existing `no-explicit-any` errors and eight warnings outside this slice.
