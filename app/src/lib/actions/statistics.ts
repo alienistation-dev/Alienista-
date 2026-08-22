@@ -4,12 +4,89 @@ import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/session';
 import { ActionResponse } from '@/lib/types/actions';
 import { withServerTiming } from '@/lib/server-timing';
+import { getRouteRequestContext } from '@/lib/route-context';
+
+export interface StatisticsOverviewData {
+  byEventPct: Array<{ label: string; count: number; pct: number }>;
+  officerLogs: Record<string, number>;
+}
+
+export interface StudentStatisticsData {
+  studentsStats: Array<{ uid: string; name: string; year: string; attendance_pct: number; count: number }>;
+}
 
 export interface StatisticsData {
   attendanceLogs: Array<{ id: string; organization_id: string; recorded_at: string; student_uid: string; student_name: string; event_id: string; event_name: string; officer_name: string | null }>;
   byEventPct: Array<{ label: string; count: number; pct: number }>;
   officerLogs: Record<string, number>;
   studentsStats: Array<{ uid: string; name: string; year: string; attendance_pct: number; count: number }>;
+}
+
+export async function getStatisticsOverviewAction(): Promise<ActionResponse<StatisticsOverviewData>> {
+  const context = await getRouteRequestContext();
+  if (!context) return { success: false, error: 'Unauthorized' };
+
+  const { admin, organizationId } = context;
+  const [{ data: events, error: eventsError }, { data: officerRows, error: officersError }] = await withServerTiming(
+    'statistics-overview',
+    () => Promise.all([
+      withServerTiming('statistics:event-summary', async () => admin
+        .from('v_statistics_event_summary')
+        .select('event_id, label, count, active_students')
+        .eq('organization_id', organizationId)),
+      withServerTiming('statistics:officer-summary', async () => admin
+        .from('v_statistics_officer_summary')
+        .select('officer_name, count')
+        .eq('organization_id', organizationId)),
+    ])
+  );
+
+  if (eventsError) return { success: false, error: eventsError.message };
+  if (officersError) return { success: false, error: officersError.message };
+
+  const byEventPct = (events || []).map((event) => {
+    const eventScans = Number(event.count || 0);
+    return {
+      label: event.label,
+      count: eventScans,
+      pct: Math.round((eventScans / Math.max(1, Number(event.active_students || 0))) * 100),
+    };
+  });
+
+  const officerLogs: Record<string, number> = Object.fromEntries(
+    (officerRows || []).map((row) => [row.officer_name || 'Officer', Number(row.count || 0)])
+  );
+
+  return { success: true, data: { byEventPct, officerLogs } };
+}
+
+export async function getStudentStatisticsAction(): Promise<ActionResponse<StudentStatisticsData>> {
+  const context = await getRouteRequestContext();
+  if (!context) return { success: false, error: 'Unauthorized' };
+
+  const { admin, organizationId } = context;
+  const { data: students, error } = await withServerTiming(
+    'statistics-student-section',
+    async () => withServerTiming('statistics:student-summary', async () => admin
+      .from('v_statistics_student_summary')
+      .select('uid, name, year, count, attendance_pct')
+      .eq('organization_id', organizationId))
+  );
+
+  if (error) return { success: false, error: error.message };
+
+  return {
+    success: true,
+    data: {
+      studentsStats: (students || []).map((student) => ({
+        uid: student.uid,
+        name: student.name,
+        year: student.year,
+        count: Number(student.count || 0),
+        attendance_pct: Number(student.attendance_pct || 0),
+      })),
+    },
+  };
 }
 
 export async function getStatisticsAction(): Promise<ActionResponse<StatisticsData>> {
