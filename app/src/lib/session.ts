@@ -1,6 +1,6 @@
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { SessionUser } from '@/lib/types/actions';
-import { env } from '@/lib/env';
+import { env, isSecureOrigin } from '@/lib/env';
 
 const SESSION_COOKIE_NAME = 'alienista_session';
 
@@ -50,10 +50,10 @@ export async function signSession(payload: SessionUser): Promise<string> {
   return `${b64Data}.${b64Sig}`;
 }
 
-export async function verifySession(token: string): Promise<SessionUser | null> {
+export async function verifySession(token: string, now: number = Date.now()): Promise<SessionUser | null> {
   try {
     const [b64Data, b64Sig] = token.split('.');
-    if (!b64Data || !b64Sig) return null;
+    if (!b64Data || !b64Sig || token.split('.').length !== 2) return null;
 
     const dataBuffer = base64UrlToBuffer(b64Data);
     const sigBuffer = base64UrlToBuffer(b64Sig);
@@ -63,7 +63,21 @@ export async function verifySession(token: string): Promise<SessionUser | null> 
     if (!isValid) return null;
 
     const dec = new TextDecoder();
-    return JSON.parse(dec.decode(dataBuffer)) as SessionUser;
+    const session = JSON.parse(dec.decode(dataBuffer)) as SessionUser;
+    if (
+      !session.subject_id ||
+      !session.subject_type ||
+      !session.organization_id ||
+      session.subject_id !== session.id ||
+      session.subject_type !== session.role ||
+      !Number.isFinite(session.issued_at) ||
+      !Number.isFinite(session.expires_at) ||
+      session.expires_at <= session.issued_at ||
+      now >= session.expires_at
+    ) {
+      return null;
+    }
+    return session;
   } catch {
     return null;
   }
@@ -72,12 +86,17 @@ export async function verifySession(token: string): Promise<SessionUser | null> 
 export async function setSessionCookie(user: SessionUser) {
   const token = await signSession(user);
   const cookieStore = await cookies();
+  const requestHeaders = await headers();
+  const forwardedProto = requestHeaders.get('x-forwarded-proto');
+  const forwardedHost = requestHeaders.get('x-forwarded-host') || requestHeaders.get('host');
+  const detectedOrigin = forwardedProto && forwardedHost ? `${forwardedProto}://${forwardedHost}` : env.siteUrl;
+
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isSecureOrigin(detectedOrigin) || process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    maxAge: Math.max(0, Math.floor((user.expires_at - Date.now()) / 1000)),
   });
 }
 

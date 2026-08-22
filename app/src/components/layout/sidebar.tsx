@@ -14,6 +14,7 @@ import {
   BarChart3,
   Smartphone,
   Settings,
+  ClipboardCheck,
 } from 'lucide-react';
 
 export function Sidebar({ user }: { user: SessionUser }) {
@@ -26,6 +27,7 @@ export function Sidebar({ user }: { user: SessionUser }) {
     { label: 'QR Scanner', href: '/scanner', icon: QrCode, roles: ['admin', 'officer'] },
     { label: 'QR Generator', href: '/qr-generator', icon: BadgePercent, roles: ['admin', 'officer'] },
     { label: 'Statistics', href: '/statistics', icon: BarChart3, roles: ['admin', 'officer'] },
+    { label: 'Assessments', href: '/assessments', icon: ClipboardCheck, roles: ['admin'] },
     { label: 'Device Audit Log', href: '/device-log', icon: Smartphone, roles: ['admin', 'officer'] },
     { label: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
   ];

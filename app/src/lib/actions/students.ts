@@ -7,6 +7,7 @@ import { ActionResponse } from '@/lib/types/actions';
 import { Student } from '@/lib/types/models';
 import { studentSchema } from '@/lib/validations/students';
 import { revalidatePath } from 'next/cache';
+import { allocateStudentUid } from '@/lib/students/uid';
 
 export async function getStudentsAction(): Promise<ActionResponse<Student[]>> {
   const user = await getSessionUser();
@@ -34,37 +35,9 @@ export async function createStudentAction(rawInput: unknown): Promise<ActionResp
   const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
 
-  // Auto-generate incremental UID if omitted or empty (e.g. ST-2026-0001)
   let finalUid = parsed.data.uid?.trim();
   if (!finalUid) {
-    const currentYear = new Date().getFullYear();
-    const prefix = `ST-${currentYear}-`;
-    const { data: latestStudents } = await admin
-      .from('students')
-      .select('uid')
-      .eq('organization_id', orgId)
-      .ilike('uid', `${prefix}%`)
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    let maxSeq = 0;
-    if (latestStudents && latestStudents.length > 0) {
-      for (const s of latestStudents) {
-        const parts = s.uid.split('-');
-        const num = parseInt(parts[parts.length - 1], 10);
-        if (!isNaN(num) && num > maxSeq) {
-          maxSeq = num;
-        }
-      }
-    }
-    if (maxSeq === 0) {
-      const { count } = await admin
-        .from('students')
-        .select('*', { count: 'exact', head: true })
-        .eq('organization_id', orgId);
-      maxSeq = count || 0;
-    }
-    finalUid = `${prefix}${String(maxSeq + 1).padStart(4, '0')}`;
+    finalUid = await allocateStudentUid(orgId);
   }
 
   const firstName = parsed.data.first_name.trim();
@@ -119,7 +92,6 @@ export async function updateStudentAction(id: string, rawInput: unknown): Promis
   const computedFullName = `${firstName} ${lastName}`;
 
   const updatePayload: Record<string, any> = {
-    ...(parsed.data.uid ? { uid: parsed.data.uid.trim() } : {}),
     student_number: parsed.data.student_number.trim(),
     first_name: firstName,
     last_name: lastName,

@@ -3,11 +3,14 @@
 import React, { useState } from 'react';
 import { Student } from '@/lib/types/models';
 import { BadgeCard } from '@/components/badges/badge-card';
-import { Search, Printer } from 'lucide-react';
+import { buildBadgeData } from '@/lib/badges/badge';
+import { renderBadgeToDataUrl } from '@/lib/badges/render-badge';
+import { Search, Printer, LoaderCircle } from 'lucide-react';
 
 export function QrGeneratorView({ students }: { students: Student[] }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [isPreparingPrint, setIsPreparingPrint] = useState(false);
   const perPage = 8;
 
   const filtered = students.filter((s) => {
@@ -21,6 +24,30 @@ export function QrGeneratorView({ students }: { students: Student[] }) {
 
   const totalPages = Math.ceil(filtered.length / perPage) || 1;
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);
+
+  const handlePrintAll = async () => {
+    if (filtered.length === 0 || isPreparingPrint) return;
+    setIsPreparingPrint(true);
+    try {
+      const imageUrls = await Promise.all(filtered.map((student) => renderBadgeToDataUrl(buildBadgeData(student))));
+      const printWindow = window.open('', '_blank', 'noopener,noreferrer');
+      if (!printWindow) throw new Error('The print window was blocked by the browser.');
+      printWindow.document.write(`<!doctype html><html><head><title>Alienista badges</title><style>
+        @page { size: A4 portrait; margin: 10mm; }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: Arial, sans-serif; }
+        main { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8mm; }
+        img { width: 100%; height: auto; break-inside: avoid; border: 1px solid #E5EBE5; }
+      </style></head><body><main>${imageUrls.map((url, index) => `<img src="${url}" alt="Badge ${index + 1}">`).join('')}</main></body></html>`);
+      printWindow.document.close();
+      printWindow.onload = () => {
+        printWindow.focus();
+        printWindow.print();
+      };
+    } finally {
+      setIsPreparingPrint(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -41,11 +68,12 @@ export function QrGeneratorView({ students }: { students: Student[] }) {
         </div>
 
         <button
-          onClick={() => window.print()}
+          onClick={handlePrintAll}
+          disabled={filtered.length === 0 || isPreparingPrint}
           className="bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs self-end sm:self-auto"
         >
-          <Printer className="w-4 h-4" />
-          <span>Print Badges</span>
+          {isPreparingPrint ? <LoaderCircle className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+          <span>{isPreparingPrint ? 'Preparing All Badges' : 'Print / Save PDF'}</span>
         </button>
       </div>
 

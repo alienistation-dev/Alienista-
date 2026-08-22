@@ -1,81 +1,47 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-class RateLimiter {
-  private attempts = new Map<string, number[]>();
-  private readonly maxAttempts = 5;
-  private readonly windowMs = 5 * 60 * 1000; // 5 minutes
+const mocks = vi.hoisted(() => ({ rpc: vi.fn() }));
 
-  check(key: string, now: number = Date.now()): boolean {
-    const timestamps = (this.attempts.get(key) || []).filter((t) => now - t < this.windowMs);
-    this.attempts.set(key, timestamps);
-    return timestamps.length >= this.maxAttempts;
-  }
+vi.mock('@/lib/supabase/admin', () => ({
+  createAdminClient: () => ({ rpc: mocks.rpc }),
+}));
 
-  record(key: string, now: number = Date.now()): void {
-    const timestamps = this.attempts.get(key) || [];
-    timestamps.push(now);
-    this.attempts.set(key, timestamps);
-  }
+import {
+  clearLoginFailures,
+  isLoginRateLimited,
+  recordLoginFailure,
+} from '@/lib/auth/rate-limit';
 
-  reset(): void {
-    this.attempts.clear();
-  }
-}
+describe('deployment-safe login rate limiting', () => {
+  beforeEach(() => mocks.rpc.mockReset());
 
-describe('Rate Limiting Logic', () => {
-  let limiter: RateLimiter;
+  it('checks a normalized identifier through the database function', async () => {
+    mocks.rpc.mockResolvedValue({ data: true, error: null });
 
-  beforeEach(() => {
-    limiter = new RateLimiter();
+    await expect(isLoginRateLimited('  ADMIN  ')).resolves.toBe(true);
+    expect(mocks.rpc).toHaveBeenCalledWith('check_login_rate_limit', {
+      p_identifier_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
   });
 
-  it('should allow up to 4 failed attempts without locking out', () => {
-    const key = 'officer:juan';
-    const now = 1000000;
+  it('records and clears failures without storing the raw identifier', async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: null });
 
-    for (let i = 0; i < 4; i++) {
-      expect(limiter.check(key, now)).toBe(false);
-      limiter.record(key, now);
-    }
-    expect(limiter.check(key, now)).toBe(false);
+    await recordLoginFailure('Student-001');
+    await clearLoginFailures('student-001');
+
+    const firstHash = mocks.rpc.mock.calls[0][1].p_identifier_hash;
+    expect(mocks.rpc.mock.calls[0][0]).toBe('record_login_failure');
+    expect(mocks.rpc.mock.calls[1]).toEqual([
+      'clear_login_failures',
+      { p_identifier_hash: firstHash },
+    ]);
+    expect(firstHash).not.toContain('student');
   });
 
-  it('should lock out on the 5th failed attempt', () => {
-    const key = 'student:st-2026-0001';
-    const now = 1000000;
+  it('fails closed when the shared limiter cannot be checked', async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { message: 'database unavailable' } });
 
-    for (let i = 0; i < 5; i++) {
-      limiter.record(key, now);
-    }
-
-    expect(limiter.check(key, now)).toBe(true);
-  });
-
-  it('should automatically release the lock after the 5-minute window expires', () => {
-    const key = 'admin:admin';
-    const startTime = 1000000;
-
-    // 5 failures at startTime
-    for (let i = 0; i < 5; i++) {
-      limiter.record(key, startTime);
-    }
-    expect(limiter.check(key, startTime)).toBe(true);
-
-    // 5 minutes and 1 second later (301,000 ms)
-    const afterWindow = startTime + (5 * 60 * 1000) + 1000;
-    expect(limiter.check(key, afterWindow)).toBe(false);
-  });
-
-  it('should isolate rate limits across different identifiers', () => {
-    const keyA = 'officer:officer_a';
-    const keyB = 'officer:officer_b';
-    const now = 1000000;
-
-    for (let i = 0; i < 5; i++) {
-      limiter.record(keyA, now);
-    }
-
-    expect(limiter.check(keyA, now)).toBe(true);
-    expect(limiter.check(keyB, now)).toBe(false);
+    await expect(isLoginRateLimited('admin')).rejects.toThrow('Unable to check login rate limit.');
   });
 });

@@ -1,8 +1,7 @@
 import { z } from 'zod';
 
 export const loginSchema = z.object({
-  role: z.enum(['admin', 'officer', 'student']),
-  identifier: z.string().min(1, 'Username, Officer Name, or Student Number is required'),
+  identifier: z.string().trim().min(1, 'Account identifier is required'),
   password: z.string().min(1, 'Password or PIN is required'),
 });
 

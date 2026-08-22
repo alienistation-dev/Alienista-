@@ -7,7 +7,7 @@ import {
   toggleEventStatusAction,
   deleteEventAction,
 } from '@/lib/actions/events';
-import { Calendar, Plus, MapPin, Clock, Trash2, Power, Layers } from 'lucide-react';
+import { Plus, MapPin, Clock, Trash2, Power, Layers } from 'lucide-react';
 
 interface EventsViewProps {
   initialEvents: Event[];
@@ -25,9 +25,17 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
   const [startsAt, setStartsAt] = useState('');
   const [venue, setVenue] = useState('');
   const [description, setDescription] = useState('');
-  const [status, setStatus] = useState<EventStatus>('Open');
+  const [weight, setWeight] = useState(1);
   const [slots, setSlots] = useState<
-    Array<{ label: string; slot_type: SlotType; opens_at: string; closes_at: string }>
+    Array<{
+      label: string;
+      slot_type: SlotType;
+      opens_at: string;
+      late_cutoff_at: string;
+      closes_at: string;
+      late_penalty_percent: number;
+      is_required: boolean;
+    }>
   >([]);
 
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
@@ -42,7 +50,12 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
         label: `Window #${prev.length + 1}`,
         slot_type: 'am_in',
         opens_at: startsAt || new Date().toISOString().slice(0, 16),
-        closes_at: startsAt || new Date().toISOString().slice(0, 16),
+        late_cutoff_at: startsAt || new Date().toISOString().slice(0, 16),
+        closes_at: startsAt
+          ? new Date(new Date(startsAt).getTime() + 60 * 60 * 1000).toISOString().slice(0, 16)
+          : new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16),
+        late_penalty_percent: 0,
+        is_required: true,
       },
     ]);
   };
@@ -51,7 +64,7 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
     setSlots((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSlotChange = (index: number, field: string, value: string) => {
+  const handleSlotChange = (index: number, field: string, value: string | number | boolean) => {
     setSlots((prev) =>
       prev.map((s, i) => (i === index ? { ...s, [field]: value } : s))
     );
@@ -65,10 +78,12 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
         starts_at: new Date(startsAt).toISOString(),
         venue,
         description,
-        status,
+        status: 'Open',
+        weight,
         slots: slots.map((s) => ({
           ...s,
           opens_at: new Date(s.opens_at).toISOString(),
+          late_cutoff_at: s.late_cutoff_at ? new Date(s.late_cutoff_at).toISOString() : null,
           closes_at: new Date(s.closes_at).toISOString(),
         })),
       });
@@ -84,6 +99,7 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
       setName('');
       setVenue('');
       setDescription('');
+      setWeight(1);
       setSlots([]);
     });
   };
@@ -175,6 +191,7 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <h3 className="text-sm font-bold text-slate-900 truncate">{ev.name}</h3>
+                      <span className="text-[10px] font-bold text-slate-500">{ev.weight || 1} pts</span>
                       <span
                         className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
                           ev.status === 'Open'
@@ -303,6 +320,19 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Event Weight (1-20 points)</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  required
+                  value={weight}
+                  onChange={(e) => setWeight(Number(e.target.value))}
+                  className="w-28 bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900"
+                />
+              </div>
+
               {/* Attendance Slots Configuration */}
               <div className="pt-2 border-t border-[#E5EBE5]">
                 <div className="flex items-center justify-between mb-2">
@@ -349,13 +379,22 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
                         <div>
                           <span className="text-slate-500 font-medium block mb-0.5">Opens At</span>
                           <input
                             type="datetime-local"
                             value={slot.opens_at}
                             onChange={(e) => handleSlotChange(index, 'opens_at', e.target.value)}
+                            className="w-full bg-white border border-[#E5EBE5] rounded-xl px-2 py-1 text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div>
+                          <span className="text-slate-500 font-medium block mb-0.5">Late After</span>
+                          <input
+                            type="datetime-local"
+                            value={slot.late_cutoff_at}
+                            onChange={(e) => handleSlotChange(index, 'late_cutoff_at', e.target.value)}
                             className="w-full bg-white border border-[#E5EBE5] rounded-xl px-2 py-1 text-slate-800 text-xs"
                           />
                         </div>
@@ -368,6 +407,28 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
                             className="w-full bg-white border border-[#E5EBE5] rounded-xl px-2 py-1 text-slate-800 text-xs"
                           />
                         </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-[11px]">
+                        <label className="flex items-center gap-2 text-slate-600">
+                          <input
+                            type="checkbox"
+                            checked={slot.is_required}
+                            onChange={(e) => handleSlotChange(index, 'is_required', e.target.checked)}
+                          />
+                          Required slot
+                        </label>
+                        <label className="flex items-center gap-2 text-slate-600">
+                          Late penalty
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={slot.late_penalty_percent}
+                            onChange={(e) => handleSlotChange(index, 'late_penalty_percent', Number(e.target.value))}
+                            className="w-16 bg-white border border-[#E5EBE5] rounded-lg px-2 py-1 text-slate-800"
+                          />
+                          %
+                        </label>
                       </div>
                     </div>
                   ))}

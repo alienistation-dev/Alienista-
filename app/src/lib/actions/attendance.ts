@@ -3,20 +3,58 @@
 import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/session';
 import { ActionResponse } from '@/lib/types/actions';
+import { requireRole } from '@/lib/auth/guards';
+import { evaluateAttendanceStatus } from '@/lib/attendance/status';
+import { AttendanceStatus } from '@/lib/types/models';
 
-export async function recordScanAction(input: {
+interface AttendanceSlotRow {
+  id: string;
+  opens_at: string;
+  closes_at: string;
+  late_cutoff_at: string | null;
+  late_penalty_percent: number;
+}
+
+interface ScanInput {
   student_uid: string;
   event_id: string;
   slot_id?: string | null;
   client_id?: string;
   timestamp?: string;
-}): Promise<ActionResponse<{ student_name: string; event_name: string; timestamp: string }>> {
-  const user = await getSessionUser();
-  if (!user) return { success: false, error: 'Unauthorized.' };
+}
+
+interface RecordedScan {
+  student_name: string;
+  event_name: string;
+  timestamp: string;
+  attendance_status: AttendanceStatus;
+  late_penalty_percent: number;
+}
+
+interface BulkScanInput extends ScanInput {
+  client_id: string;
+}
+
+interface SyncScanResult {
+  client_id: string;
+  success: boolean;
+  error?: string;
+  code?: string;
+  data?: RecordedScan;
+}
+
+export async function recordScanAction(input: ScanInput): Promise<ActionResponse<RecordedScan>> {
+  let user;
+  try {
+    user = await requireRole('admin', 'officer');
+  } catch {
+    return { success: false, error: 'Unauthorized.' };
+  }
 
   const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
   const scanTime = input.timestamp ? new Date(input.timestamp) : new Date();
+  if (!Number.isFinite(scanTime.getTime())) return { success: false, error: 'Invalid scan timestamp.', code: 'INVALID_TIMESTAMP' };
 
   // 1. Resolve student
   const { data: student } = await admin
@@ -26,8 +64,8 @@ export async function recordScanAction(input: {
     .eq('organization_id', orgId)
     .single();
 
-  if (!student) return { success: false, error: 'Student UID not found.' };
-  if (student.status !== 'Active') return { success: false, error: 'Student account is inactive.' };
+  if (!student) return { success: false, error: 'Student UID not found.', code: 'STUDENT_NOT_FOUND' };
+  if (student.status !== 'Active') return { success: false, error: 'Student account is inactive.', code: 'STUDENT_INACTIVE' };
 
   // 2. Resolve event & slots
   const { data: event } = await admin
@@ -37,22 +75,31 @@ export async function recordScanAction(input: {
     .eq('organization_id', orgId)
     .single();
 
-  if (!event) return { success: false, error: 'Event not found.' };
-  if (event.status !== 'Open') return { success: false, error: 'Event is closed for attendance.' };
+  if (!event) return { success: false, error: 'Event not found.', code: 'EVENT_NOT_FOUND' };
+  if (event.status !== 'Open') return { success: false, error: 'Event is closed for attendance.', code: 'EVENT_CLOSED' };
 
   // 3. Validate slot window if event has slots
   let activeSlotId = input.slot_id || null;
+  let attendanceStatus: AttendanceStatus = 'on_time';
+  let effectiveScanTime = scanTime.toISOString();
+  let latePenaltyPercent = 0;
   if (event.slots && event.slots.length > 0) {
-    const validSlot = event.slots.find((slot: any) => {
+    const slots = event.slots as AttendanceSlotRow[];
+    const validSlot = slots.find((slot) => {
+      if (input.slot_id && slot.id !== input.slot_id) return false;
       const open = new Date(slot.opens_at);
       const close = new Date(slot.closes_at);
       return scanTime >= open && scanTime <= close;
     });
 
     if (!validSlot) {
-      return { success: false, error: 'Scan rejected: Outside active attendance window.' };
+      return { success: false, error: 'Scan rejected: Outside active attendance window.', code: 'OUTSIDE_WINDOW' };
     }
     activeSlotId = validSlot.id;
+    const evaluation = evaluateAttendanceStatus(scanTime, validSlot);
+    attendanceStatus = evaluation.status;
+    effectiveScanTime = evaluation.effective_scan_time;
+    latePenaltyPercent = evaluation.late_penalty_percent;
   }
 
   // 4. Duplicate Check
@@ -84,13 +131,16 @@ export async function recordScanAction(input: {
     officer_name: user.name,
     client_id: input.client_id || null,
     recorded_at: scanTime.toISOString(),
+    effective_scan_time: effectiveScanTime,
+    attendance_status: attendanceStatus,
+    late_penalty_percent: latePenaltyPercent,
   });
 
   if (insertErr) {
     if (insertErr.code === '23505') {
       return { success: false, error: 'Already recorded.', code: 'DUPLICATE' };
     }
-    return { success: false, error: insertErr.message };
+    return { success: false, error: insertErr.message, code: 'SERVER_ERROR' };
   }
 
   return {
@@ -98,13 +148,15 @@ export async function recordScanAction(input: {
     data: {
       student_name: student.full_name,
       event_name: event.name,
-      timestamp: scanTime.toISOString(),
+      timestamp: effectiveScanTime,
+      attendance_status: attendanceStatus,
+      late_penalty_percent: latePenaltyPercent,
     },
   };
 }
 
-export async function bulkSyncScansAction(scans: any[]): Promise<ActionResponse<any[]>> {
-  const results = [];
+export async function bulkSyncScansAction(scans: BulkScanInput[]): Promise<ActionResponse<SyncScanResult[]>> {
+  const results: SyncScanResult[] = [];
   for (const scan of scans) {
     const res = await recordScanAction(scan);
     results.push({
@@ -134,6 +186,9 @@ export async function manualAttendanceOverrideAction(input: {
     event_id: input.event_id,
     slot_id: input.slot_id || null,
     officer_name: 'Admin (Manual Override)',
+    effective_scan_time: new Date().toISOString(),
+    attendance_status: 'manual',
+    late_penalty_percent: 0,
   });
 
   if (error) {

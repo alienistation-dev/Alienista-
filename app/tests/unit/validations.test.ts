@@ -1,42 +1,22 @@
 import { describe, it, expect } from 'vitest';
 import { loginSchema, changePasswordSchema } from '@/lib/validations/auth';
 import { studentSchema } from '@/lib/validations/students';
-import { eventSlotSchema } from '@/lib/validations/events';
+import { eventSchema, eventSlotSchema } from '@/lib/validations/events';
 
 describe('Validation Schemas Unit Tests', () => {
   describe('Login Schema', () => {
-    it('should validate admin credentials', () => {
+    it('accepts credentials without requiring a client-selected role', () => {
       const result = loginSchema.safeParse({
-        role: 'admin',
         identifier: 'admin',
         password: 'adminpassword',
       });
       expect(result.success).toBe(true);
     });
 
-    it('should validate officer credentials', () => {
+    it('rejects blank identifiers and secrets', () => {
       const result = loginSchema.safeParse({
-        role: 'officer',
-        identifier: 'John Doe',
-        password: '1234',
-      });
-      expect(result.success).toBe(true);
-    });
-
-    it('should validate student credentials with UID or Student Number', () => {
-      const result = loginSchema.safeParse({
-        role: 'student',
-        identifier: '2026-8-0123',
-        password: 'DELACRUZ',
-      });
-      expect(result.success).toBe(true);
-    });
-
-    it('should reject invalid role', () => {
-      const result = loginSchema.safeParse({
-        role: 'superadmin',
-        identifier: 'admin',
-        password: 'pass',
+        identifier: '   ',
+        password: '',
       });
       expect(result.success).toBe(false);
     });
@@ -110,6 +90,33 @@ describe('Validation Schemas Unit Tests', () => {
         closes_at: '2026-08-15T09:00:00Z',
       });
       expect(valid.success).toBe(true);
+    });
+
+    it('accepts event weights from 1 through 20', () => {
+      const base = {
+        name: 'General Assembly',
+        starts_at: '2026-08-22T08:00:00Z',
+        venue: 'Gym',
+        slots: [],
+      };
+
+      expect(eventSchema.safeParse({ ...base, weight: 1 }).success).toBe(true);
+      expect(eventSchema.safeParse({ ...base, weight: 20 }).success).toBe(true);
+      expect(eventSchema.safeParse({ ...base, weight: 0 }).success).toBe(false);
+      expect(eventSchema.safeParse({ ...base, weight: 21 }).success).toBe(false);
+    });
+
+    it('rejects a late cutoff outside the slot window', () => {
+      const result = eventSlotSchema.safeParse({
+        label: 'Morning In',
+        slot_type: 'am_in',
+        opens_at: '2026-08-22T08:00:00Z',
+        late_cutoff_at: '2026-08-22T07:59:59Z',
+        closes_at: '2026-08-22T09:00:00Z',
+        late_penalty_percent: 25,
+      });
+
+      expect(result.success).toBe(false);
     });
   });
 });

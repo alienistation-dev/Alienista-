@@ -23,6 +23,7 @@ export default async function ScannerPage() {
         userRole={user?.role || 'officer'}
         officerName={user?.name || 'Officer'}
         officerId={user?.id || ''}
+        organizationId={user?.organization_id || ''}
       />
     </div>
   );
