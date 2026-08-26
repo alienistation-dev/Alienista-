@@ -9,17 +9,6 @@
 # testing
 /coverage
 
-# Agent-local configuration and generated context
-/.agents/
-/.claude/
-/.codex/
-/AGENTS.md
-/CLAUDE.md
-/GEMINI.md
-/graphify-out/
-/supabase/.temp/
-
-# Project documentation is intentionally tracked
 # next.js
 /.next/
 /out/
