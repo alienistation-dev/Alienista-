@@ -1,13 +1,22 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Student } from '@/lib/types/models';
+import { BadgeStudent } from '@/lib/types/models';
 import { BadgeCard } from '@/components/badges/badge-card';
-import { Search, Printer } from 'lucide-react';
+import { buildBadgeData } from '@/lib/badges/badge';
+import {
+  buildBadgePrintDocument,
+  buildBadgePrintLoadingDocument,
+  openBadgePrintWindow,
+} from '@/lib/badges/print-badges';
+import { Search, Printer, LoaderCircle } from 'lucide-react';
 
-export function QrGeneratorView({ students }: { students: Student[] }) {
+export function QrGeneratorView({ students }: { students: BadgeStudent[] }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [isPreparingPrint, setIsPreparingPrint] = useState(false);
+  const [printProgress, setPrintProgress] = useState(0);
+  const [printError, setPrintError] = useState('');
   const perPage = 8;
 
   const filtered = students.filter((s) => {
@@ -21,6 +30,39 @@ export function QrGeneratorView({ students }: { students: Student[] }) {
 
   const totalPages = Math.ceil(filtered.length / perPage) || 1;
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);
+
+  const handlePrintAll = async () => {
+    if (filtered.length === 0 || isPreparingPrint) return;
+    setPrintError('');
+    const printWindow = openBadgePrintWindow();
+    if (!printWindow) {
+      setPrintError('Printing was blocked. Allow pop-ups for this site, then try again.');
+      return;
+    }
+
+    setIsPreparingPrint(true);
+    setPrintProgress(0);
+    try {
+      printWindow.document.write(buildBadgePrintLoadingDocument());
+      printWindow.document.close();
+
+      const { renderBadgeToDataUrl } = await import('@/lib/badges/render-badge');
+      const imageUrls: string[] = [];
+      for (const [index, student] of filtered.entries()) {
+        imageUrls.push(await renderBadgeToDataUrl(buildBadgeData(student)));
+        setPrintProgress(index + 1);
+      }
+
+      printWindow.document.open();
+      printWindow.document.write(buildBadgePrintDocument(imageUrls));
+      printWindow.document.close();
+    } catch {
+      printWindow.close();
+      setPrintError('Badge preparation failed. Close the print tab and try again.');
+    } finally {
+      setIsPreparingPrint(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -41,13 +83,24 @@ export function QrGeneratorView({ students }: { students: Student[] }) {
         </div>
 
         <button
-          onClick={() => window.print()}
+          onClick={handlePrintAll}
+          disabled={filtered.length === 0 || isPreparingPrint}
           className="bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs self-end sm:self-auto"
         >
-          <Printer className="w-4 h-4" />
-          <span>Print Badges</span>
+          {isPreparingPrint ? <LoaderCircle className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+          <span>{isPreparingPrint ? 'Preparing All Badges' : 'Print / Save PDF'}</span>
         </button>
       </div>
+      {isPreparingPrint && (
+        <p className="text-xs text-slate-500" role="status" aria-live="polite">
+          Preparing badge {printProgress} of {filtered.length}...
+        </p>
+      )}
+      {printError && (
+        <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2" role="alert">
+          {printError}
+        </p>
+      )}
 
       {/* Badges Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -6,6 +6,7 @@ import { getSessionUser } from '@/lib/session';
 import { ActionResponse } from '@/lib/types/actions';
 import { Officer, OrganizationSettings, YearLevel } from '@/lib/types/models';
 import { revalidatePath } from 'next/cache';
+import { withServerTiming } from '@/lib/server-timing';
 
 const YEAR_FLOW: Record<YearLevel, { nextYear: YearLevel; status: 'Active' | 'Inactive' }> = {
   '1st Year': { nextYear: '2nd Year', status: 'Active' },
@@ -26,17 +27,10 @@ export async function getSettingsDataAction(): Promise<
   const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
 
-  const { data: settings } = await admin
-    .from('organization_settings')
-    .select('*')
-    .eq('organization_id', orgId)
-    .maybeSingle();
-
-  const { data: officers } = await admin
-    .from('officers')
-    .select('id, organization_id, name, status, created_at, updated_at')
-    .eq('organization_id', orgId)
-    .order('name', { ascending: true });
+  const [{ data: settings }, { data: officers }] = await withServerTiming('settings', () => Promise.all([
+    admin.from('organization_settings').select('id, organization_id, academic_year, semester, admin_username, updated_at').eq('organization_id', orgId).maybeSingle(),
+    admin.from('officers').select('id, organization_id, name, status, created_at, updated_at').eq('organization_id', orgId).order('name', { ascending: true }),
+  ]));
 
   return {
     success: true,
@@ -87,7 +81,7 @@ export async function updateAdminCredentialsAction(input: {
     return { success: false, error: 'Incorrect current admin password.' };
   }
 
-  const updates: Record<string, any> = {};
+  const updates: Record<string, unknown> = {};
   if (newUsername && newUsername.trim()) {
     updates.admin_username = newUsername.trim();
   }

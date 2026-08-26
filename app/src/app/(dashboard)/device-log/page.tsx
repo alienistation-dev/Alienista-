@@ -1,7 +1,9 @@
 import React from 'react';
 import { DeviceLogView } from './device-log-view';
+import { getSessionUser } from '@/lib/session';
 
-export default function DeviceLogPage() {
+export default async function DeviceLogPage() {
+  const user = await getSessionUser();
   return (
     <div className="space-y-6">
       <div>
@@ -11,7 +13,7 @@ export default function DeviceLogPage() {
         </p>
       </div>
 
-      <DeviceLogView />
+      <DeviceLogView organizationId={user?.organization_id || ''} />
     </div>
   );
 }

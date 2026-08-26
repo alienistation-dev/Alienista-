@@ -3,62 +3,13 @@
 import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginAction, changeStudentPasswordAction } from '@/lib/actions/auth';
-import { UserRole } from '@/lib/types/models';
 import Image from 'next/image';
-import { Shield, UserCheck, GraduationCap, KeyRound, ArrowRight, Lock, User } from 'lucide-react';
-
-interface RoleConfig {
-  label: string;
-  badge: string;
-  icon: typeof UserCheck;
-  identifierLabel: string;
-  identifierPlaceholder: string;
-  secretLabel: string;
-  secretPlaceholder: string;
-  helperText?: string;
-  buttonLabel: string;
-}
-
-const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
-  officer: {
-    label: 'Officer',
-    badge: 'Scanning Duty',
-    icon: UserCheck,
-    identifierLabel: 'Officer Full Name',
-    identifierPlaceholder: 'e.g. Juan Dela Cruz',
-    secretLabel: '4-Digit PIN',
-    secretPlaceholder: '••••',
-    helperText: 'Enter your authorized executive officer PIN.',
-    buttonLabel: 'Sign In as Officer',
-  },
-  student: {
-    label: 'Student',
-    badge: 'Student Portal',
-    icon: GraduationCap,
-    identifierLabel: 'Student Number',
-    identifierPlaceholder: 'e.g. 2026-8-0123',
-    secretLabel: 'Student Password',
-    secretPlaceholder: '••••••••',
-    helperText: 'Default password is your LAST NAME in CAPITAL letters.',
-    buttonLabel: 'Sign In as Student',
-  },
-  admin: {
-    label: 'Admin',
-    badge: 'Master Control',
-    icon: Shield,
-    identifierLabel: 'Admin Username',
-    identifierPlaceholder: 'admin',
-    secretLabel: 'Admin Password',
-    secretPlaceholder: '••••••••',
-    helperText: 'Default credentials: admin / admin123',
-    buttonLabel: 'Sign In as Admin',
-  },
-};
+import { KeyRound, ArrowRight, Lock, User } from 'lucide-react';
+import { env } from '@/lib/env';
 
 export default function LoginPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [role, setRole] = useState<UserRole>('officer');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -70,7 +21,8 @@ export default function LoginPage() {
   const [newPassInput, setNewPassInput] = useState('');
   const [confirmPassInput, setConfirmPassInput] = useState('');
 
-  const currentConfig = ROLE_CONFIGS[role];
+  const getErrorMessage = (error: unknown, fallback: string) =>
+    error instanceof Error ? error.message : fallback;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +30,7 @@ export default function LoginPage() {
 
     startTransition(async () => {
       try {
-        const res = await loginAction({ role, identifier, password });
+        const res = await loginAction({ identifier, password });
         if (!res.success) {
           setError(res.error);
           return;
@@ -92,12 +44,13 @@ export default function LoginPage() {
         }
 
         if (res.data.role === 'student') {
-          window.location.href = '/my-qr';
+          router.replace('/my-qr');
         } else {
-          window.location.href = '/';
+          router.replace('/');
         }
-      } catch (err: any) {
-        setError(err?.message || 'Login request failed. Please try again.');
+        router.refresh();
+      } catch (error: unknown) {
+        setError(getErrorMessage(error, 'Login request failed. Please try again.'));
       }
     });
   };
@@ -131,9 +84,10 @@ export default function LoginPage() {
         }
 
         setShowPasswordChange(false);
-        window.location.href = '/my-qr';
-      } catch (err: any) {
-        setModalError(err?.message || 'Failed to update password.');
+        router.replace('/my-qr');
+        router.refresh();
+      } catch (error: unknown) {
+        setModalError(getErrorMessage(error, 'Failed to update password.'));
       }
     });
   };
@@ -157,49 +111,9 @@ export default function LoginPage() {
         </div>
       )}
 
-      {/* Role Selection: 3 Dynamic Choices */}
-      <div className="space-y-2 mb-5">
-        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-          Select Access Role:
-        </label>
-        <div className="grid grid-cols-3 gap-2">
-          {(['officer', 'student', 'admin'] as UserRole[]).map((r) => {
-            const cfg = ROLE_CONFIGS[r];
-            const Icon = cfg.icon;
-            const isSelected = role === r;
-
-            return (
-              <button
-                key={r}
-                type="button"
-                onClick={() => {
-                  setRole(r);
-                  setError('');
-                  setIdentifier('');
-                  setPassword('');
-                }}
-                className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center ${
-                  isSelected
-                    ? 'bg-[#EBF5EE] border-[#2D6A4F] text-[#1B4332] font-bold shadow-xs'
-                    : 'bg-[#F8FAF9] border-[#E5EBE5] text-slate-600 hover:text-slate-900 hover:border-slate-300'
-                }`}
-              >
-                <Icon className={`w-5 h-5 mb-1.5 ${isSelected ? 'text-[#2D6A4F]' : 'text-slate-400'}`} />
-                <span className="text-xs font-bold leading-tight">{cfg.label}</span>
-                <span className="text-[9px] text-slate-500 font-medium mt-0.5">{cfg.badge}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Unified Dynamic Form */}
       <form onSubmit={handleSubmit} className="space-y-4 pt-1">
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-            <span>{currentConfig.identifierLabel}</span>
-            <span className="text-[10px] text-[#2D6A4F] font-semibold uppercase">{role}</span>
-          </label>
+          <label className="block text-xs font-bold text-slate-700 mb-1.5">Account identifier</label>
           <div className="relative">
             <User className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
             <input
@@ -207,7 +121,7 @@ export default function LoginPage() {
               required
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              placeholder={currentConfig.identifierPlaceholder}
+              placeholder="Admin username, officer name, student number, or UID"
               className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#2D6A4F] focus:bg-white transition-colors"
             />
           </div>
@@ -215,7 +129,7 @@ export default function LoginPage() {
 
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1.5">
-            {currentConfig.secretLabel}
+            Password or PIN
           </label>
           <div className="relative">
             <Lock className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
@@ -224,15 +138,13 @@ export default function LoginPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder={currentConfig.secretPlaceholder}
+              placeholder="Enter your password or PIN"
               className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#2D6A4F] focus:bg-white transition-colors"
             />
           </div>
-          {currentConfig.helperText && (
-            <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
-              {currentConfig.helperText}
-            </p>
-          )}
+          <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+            Your access level is resolved securely by the server.
+          </p>
         </div>
 
         <button
@@ -240,9 +152,17 @@ export default function LoginPage() {
           disabled={isPending}
           className="w-full mt-3 bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold py-3 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-md shadow-emerald-900/10 disabled:opacity-50"
         >
-          {isPending ? 'Verifying...' : currentConfig.buttonLabel}
+          {isPending ? 'Verifying...' : 'Sign In'}
           <ArrowRight className="w-4 h-4" />
         </button>
+        <a
+          href={env.acsFacebookUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="block text-center text-xs font-semibold text-[#2D6A4F] hover:underline"
+        >
+          Need password help? Contact an ACS officer
+        </a>
       </form>
 
       {/* First-Login Password Change Modal */}

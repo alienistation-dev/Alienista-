@@ -4,9 +4,16 @@ import bcrypt from 'bcryptjs';
 import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/session';
 import { ActionResponse } from '@/lib/types/actions';
-import { Student } from '@/lib/types/models';
+import { BadgeStudent, MemberStatus, ScannerStudent, Student, YearLevel } from '@/lib/types/models';
 import { studentSchema } from '@/lib/validations/students';
 import { revalidatePath } from 'next/cache';
+import { allocateStudentUid } from '@/lib/students/uid';
+import { withServerTiming } from '@/lib/server-timing';
+
+const STUDENT_PROJECTION = 'id, organization_id, uid, student_number, first_name, last_name, full_name, course, year, section, status, is_first_login, avatar_url, created_at, updated_at';
+
+const SCANNER_PROJECTION = 'id, organization_id, uid, student_number, full_name, status, avatar_url';
+const BADGE_PROJECTION = 'id, uid, student_number, full_name, course, year, section, status, avatar_url';
 
 export async function getStudentsAction(): Promise<ActionResponse<Student[]>> {
   const user = await getSessionUser();
@@ -14,14 +21,34 @@ export async function getStudentsAction(): Promise<ActionResponse<Student[]>> {
 
   const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
-  const { data, error } = await admin
+  const { data, error } = await withServerTiming('students', async () => admin
     .from('students')
-    .select('*')
+    .select(STUDENT_PROJECTION)
     .eq('organization_id', orgId)
-    .order('full_name', { ascending: true });
+    .order('full_name', { ascending: true }));
 
   if (error) return { success: false, error: error.message };
   return { success: true, data: data as Student[] };
+}
+
+export async function getScannerStudentsAction(): Promise<ActionResponse<ScannerStudent[]>> {
+  const user = await getSessionUser();
+  if (!user) return { success: false, error: 'Unauthorized' };
+  const orgId = await getEffectiveOrgId(user.organization_id);
+  const admin = createAdminClient();
+  const { data, error } = await admin.from('students').select(SCANNER_PROJECTION).eq('organization_id', orgId).eq('status', 'Active').order('full_name', { ascending: true });
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: (data || []) as ScannerStudent[] };
+}
+
+export async function getBadgeStudentsAction(): Promise<ActionResponse<BadgeStudent[]>> {
+  const user = await getSessionUser();
+  if (!user) return { success: false, error: 'Unauthorized' };
+  const orgId = await getEffectiveOrgId(user.organization_id);
+  const admin = createAdminClient();
+  const { data, error } = await admin.from('students').select(BADGE_PROJECTION).eq('organization_id', orgId).order('full_name', { ascending: true });
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: (data || []) as BadgeStudent[] };
 }
 
 export async function createStudentAction(rawInput: unknown): Promise<ActionResponse<Student>> {
@@ -34,37 +61,9 @@ export async function createStudentAction(rawInput: unknown): Promise<ActionResp
   const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
 
-  // Auto-generate incremental UID if omitted or empty (e.g. ST-2026-0001)
   let finalUid = parsed.data.uid?.trim();
   if (!finalUid) {
-    const currentYear = new Date().getFullYear();
-    const prefix = `ST-${currentYear}-`;
-    const { data: latestStudents } = await admin
-      .from('students')
-      .select('uid')
-      .eq('organization_id', orgId)
-      .ilike('uid', `${prefix}%`)
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    let maxSeq = 0;
-    if (latestStudents && latestStudents.length > 0) {
-      for (const s of latestStudents) {
-        const parts = s.uid.split('-');
-        const num = parseInt(parts[parts.length - 1], 10);
-        if (!isNaN(num) && num > maxSeq) {
-          maxSeq = num;
-        }
-      }
-    }
-    if (maxSeq === 0) {
-      const { count } = await admin
-        .from('students')
-        .select('*', { count: 'exact', head: true })
-        .eq('organization_id', orgId);
-      maxSeq = count || 0;
-    }
-    finalUid = `${prefix}${String(maxSeq + 1).padStart(4, '0')}`;
+    finalUid = await allocateStudentUid(orgId);
   }
 
   const firstName = parsed.data.first_name.trim();
@@ -118,8 +117,7 @@ export async function updateStudentAction(id: string, rawInput: unknown): Promis
   const lastName = parsed.data.last_name.trim();
   const computedFullName = `${firstName} ${lastName}`;
 
-  const updatePayload: Record<string, any> = {
-    ...(parsed.data.uid ? { uid: parsed.data.uid.trim() } : {}),
+  const updatePayload: Record<string, unknown> = {
     student_number: parsed.data.student_number.trim(),
     first_name: firstName,
     last_name: lastName,
@@ -206,9 +204,9 @@ export async function uploadStudentAvatarAction(formData: FormData): Promise<Act
       .getPublicUrl(filePath);
 
     return { success: true, data: { publicUrl } };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('uploadStudentAvatarAction error:', err);
-    return { success: false, error: err?.message || 'Failed to upload student photo.' };
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to upload student photo.' };
   }
 }
 
@@ -268,9 +266,9 @@ export async function bulkImportStudentsCsvAction(
     last_name?: string;
     full_name?: string;
     course?: string;
-    year: any;
+    year: YearLevel;
     section: string;
-    status?: any;
+    status?: MemberStatus;
   }>
 ): Promise<ActionResponse<{ imported: number; failed: number; errors: string[] }>> {
   const user = await getSessionUser();

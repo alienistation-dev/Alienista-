@@ -1,31 +1,31 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { offlineDB, DeviceScanLog } from '@/lib/offline-db';
 import { Smartphone, Download, Trash2 } from 'lucide-react';
 
-export function DeviceLogView() {
+export function DeviceLogView({ organizationId }: { organizationId: string }) {
   const [logs, setLogs] = useState<DeviceScanLog[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     try {
-      const data = await offlineDB.getDeviceScanHistory();
+      const data = await offlineDB.getDeviceScanHistory(organizationId);
       setLogs(data);
     } catch {
       // IndexedDB error
     } finally {
       setLoading(false);
     }
-  };
+  }, [organizationId]);
 
   useEffect(() => {
-    loadLogs();
-  }, []);
+    void Promise.resolve().then(loadLogs);
+  }, [loadLogs]);
 
   const handleClear = async () => {
     if (!confirm('Clear local on-device scan audit history? This action cannot be undone.')) return;
-    await offlineDB.clearDeviceScanHistory();
+    await offlineDB.clearDeviceScanHistory(organizationId);
     setLogs([]);
   };
 

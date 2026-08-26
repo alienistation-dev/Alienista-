@@ -1,9 +1,9 @@
 import React from 'react';
-import { getStudentsAction } from '@/lib/actions/students';
+import { getBadgeStudentsAction } from '@/lib/actions/students';
 import { QrGeneratorView } from './qr-generator-view';
 
 export default async function QrGeneratorPage() {
-  const res = await getStudentsAction();
+  const res = await getBadgeStudentsAction();
 
   return (
     <div className="space-y-6">

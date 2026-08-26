@@ -1,12 +1,12 @@
 import React from 'react';
 import { getEventsAction } from '@/lib/actions/events';
-import { getStudentsAction } from '@/lib/actions/students';
+import { getScannerStudentsAction } from '@/lib/actions/students';
 import { getSessionUser } from '@/lib/session';
 import { ScannerView } from './scanner-view';
 
 export default async function ScannerPage() {
   const user = await getSessionUser();
-  const [eventsRes, studentsRes] = await Promise.all([getEventsAction(), getStudentsAction()]);
+  const [eventsRes, studentsRes] = await Promise.all([getEventsAction(), getScannerStudentsAction()]);
 
   return (
     <div className="space-y-6">
@@ -23,6 +23,7 @@ export default async function ScannerPage() {
         userRole={user?.role || 'officer'}
         officerName={user?.name || 'Officer'}
         officerId={user?.id || ''}
+        organizationId={user?.organization_id || ''}
       />
     </div>
   );

@@ -1,5 +1,5 @@
 import React from 'react';
-import { getDashboardDataAction } from '@/lib/actions/dashboard';
+import { getDashboardDataAction, type RecentAttendanceProjection } from '@/lib/actions/dashboard';
 import { DonutChart } from '@/components/charts/donut-chart';
 import { Users, Calendar, QrCode, TrendingUp, Clock, CheckCircle2 } from 'lucide-react';
 
@@ -106,7 +106,7 @@ export default async function DashboardPage() {
             {recentAttendance.length === 0 ? (
               <div className="text-xs text-slate-400 py-12 text-center">No attendance scans recorded yet.</div>
             ) : (
-              recentAttendance.slice(0, 5).map((item: any) => (
+              recentAttendance.slice(0, 5).map((item: RecentAttendanceProjection) => (
                 <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAF9] border border-[#E5EBE5] text-xs">
                   <div>
                     <div className="font-bold text-slate-900">{item.student_name}</div>

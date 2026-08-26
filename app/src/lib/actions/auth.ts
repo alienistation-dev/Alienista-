@@ -5,21 +5,19 @@ import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
 import { setSessionCookie, clearSessionCookie, getSessionUser } from '@/lib/session';
 import { loginSchema, changePasswordSchema } from '@/lib/validations/auth';
 import { ActionResponse, SessionUser } from '@/lib/types/actions';
+import {
+  AmbiguousLoginIdentifierError,
+  InvalidLoginCredentialsError,
+  resolveLoginIdentifier,
+} from '@/lib/auth/resolve-login-identifier';
+import {
+  clearLoginFailures,
+  isLoginRateLimited,
+  recordLoginFailure,
+} from '@/lib/auth/rate-limit';
 
-const failedAttemptsMap = new Map<string, number[]>();
-
-function checkRateLimit(key: string): boolean {
-  const now = Date.now();
-  const windowMs = 5 * 60 * 1000; // 5 minutes
-  const attempts = (failedAttemptsMap.get(key) || []).filter((t) => now - t < windowMs);
-  failedAttemptsMap.set(key, attempts);
-  return attempts.length >= 5;
-}
-
-function recordFailedAttempt(key: string) {
-  const attempts = failedAttemptsMap.get(key) || [];
-  attempts.push(Date.now());
-  failedAttemptsMap.set(key, attempts);
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
 }
 
 export async function loginAction(rawInput: unknown): Promise<ActionResponse<SessionUser>> {
@@ -29,167 +27,37 @@ export async function loginAction(rawInput: unknown): Promise<ActionResponse<Ses
       return { success: false, error: parsed.error.issues[0].message };
     }
 
-    const { role, identifier, password } = parsed.data;
-    const lookupKey = `${role}:${identifier.trim().toLowerCase()}`;
+    const { identifier, password } = parsed.data;
 
-    if (checkRateLimit(lookupKey)) {
+    if (await isLoginRateLimited(identifier)) {
       return {
         success: false,
         error: 'Too many failed login attempts. Please wait 5 minutes before trying again.',
       };
     }
 
-    const admin = createAdminClient();
-
-    // 1. Admin Authentication (Username + Password via Organization Settings)
-    if (role === 'admin') {
-      const { data: settings } = await admin
-        .from('organization_settings')
-        .select('id, organization_id, admin_username, admin_password_hash')
-        .limit(1)
-        .maybeSingle();
-
-      const expectedUsername = (settings?.admin_username || 'admin').trim().toLowerCase();
-      const inputUsername = identifier.trim().toLowerCase();
-
-      if (inputUsername !== expectedUsername) {
-        recordFailedAttempt(lookupKey);
-        return { success: false, error: 'Invalid admin username or password.' };
-      }
-
-      let isValid = false;
-      if (settings?.admin_password_hash) {
-        isValid = await bcrypt.compare(password, settings.admin_password_hash);
-      }
-
-      // Default password fallback: 'admin123'
-      if (!isValid && (password === 'admin123' || !settings?.admin_password_hash)) {
-        isValid = true;
-      }
-
-      if (!isValid) {
-        recordFailedAttempt(lookupKey);
-        return { success: false, error: 'Invalid admin username or password.' };
-      }
-
-      const orgId = await getEffectiveOrgId(settings?.organization_id);
-
-      const sessionUser: SessionUser = {
-        id: settings?.id || 'admin_session',
-        organization_id: orgId,
-        role: 'admin',
-        name: settings?.admin_username || 'Admin',
-      };
-
-      await setSessionCookie(sessionUser);
+    try {
+      const sessionUser = await resolveLoginIdentifier(identifier, password);
+      await clearLoginFailures(identifier);
+      if (!sessionUser.must_change_password) await setSessionCookie(sessionUser);
       return { success: true, data: sessionUser };
+    } catch (error) {
+      if (error instanceof AmbiguousLoginIdentifierError) {
+        await recordLoginFailure(identifier);
+        return {
+          success: false,
+          error: 'This identifier matches multiple accounts. Contact an administrator.',
+        };
+      }
+      if (error instanceof InvalidLoginCredentialsError) {
+        await recordLoginFailure(identifier);
+        return { success: false, error: 'Invalid identifier or password.' };
+      }
+      throw error;
     }
-
-    // 2. Officer Authentication (Name + PIN)
-    if (role === 'officer') {
-      const { data: officer } = await admin
-        .from('officers')
-        .select('id, organization_id, name, pin_hash, status')
-        .ilike('name', identifier.trim())
-        .eq('status', 'Active')
-        .maybeSingle();
-
-      if (!officer || !officer.pin_hash) {
-        recordFailedAttempt(lookupKey);
-        return { success: false, error: 'Invalid officer name or PIN.' };
-      }
-
-      const isValidPin = await bcrypt.compare(password, officer.pin_hash);
-      if (!isValidPin) {
-        recordFailedAttempt(lookupKey);
-        return { success: false, error: 'Invalid officer name or PIN.' };
-      }
-
-      const orgId = await getEffectiveOrgId(officer.organization_id);
-
-      const sessionUser: SessionUser = {
-        id: officer.id,
-        organization_id: orgId,
-        role: 'officer',
-        name: officer.name,
-      };
-
-      await setSessionCookie(sessionUser);
-      return { success: true, data: sessionUser };
-    }
-
-    // 3. Student Authentication (Student Number + Password)
-    if (role === 'student') {
-      const cleanStudentNumber = identifier.trim();
-      let { data: student } = await admin
-        .from('students')
-        .select('id, organization_id, uid, student_number, full_name, first_name, last_name, password_hash, is_first_login, status')
-        .ilike('student_number', cleanStudentNumber)
-        .eq('status', 'Active')
-        .maybeSingle();
-
-      // Fallback: Check if UID was entered
-      if (!student) {
-        const { data: byUid } = await admin
-          .from('students')
-          .select('id, organization_id, uid, student_number, full_name, first_name, last_name, password_hash, is_first_login, status')
-          .ilike('uid', cleanStudentNumber)
-          .eq('status', 'Active')
-          .maybeSingle();
-        student = byUid;
-      }
-
-      if (!student) {
-        recordFailedAttempt(lookupKey);
-        return { success: false, error: 'Student number not found or account inactive.' };
-      }
-
-      let isValid = false;
-
-      if (student.password_hash) {
-        isValid = await bcrypt.compare(password, student.password_hash);
-      }
-
-      // Default password fallback for first login (last name uppercase)
-      if (!isValid && student.is_first_login) {
-        const defaultPass = (student.last_name || student.full_name.split(' ').pop() || '').trim().toUpperCase();
-        if (password.trim().toUpperCase() === defaultPass) {
-          isValid = true;
-        }
-      }
-
-      if (!isValid) {
-        recordFailedAttempt(lookupKey);
-        return { success: false, error: 'Incorrect student credentials.' };
-      }
-
-      const orgId = await getEffectiveOrgId(student.organization_id);
-
-      const sessionUser: SessionUser = {
-        id: student.id,
-        organization_id: orgId,
-        role: 'student',
-        name: student.full_name,
-        uid: student.uid,
-        student_number: student.student_number,
-        must_change_password: Boolean(student.is_first_login),
-      };
-
-      // IMPORTANT: Do NOT set session cookie if must_change_password is true.
-      // The student is still on /login and needs to call changeStudentPasswordAction
-      // as a server action. If we set the cookie now, the middleware will see the
-      // student as logged in and redirect /login requests to /my-qr, which kills
-      // the server action call and produces "An unexpected response from the server".
-      if (!sessionUser.must_change_password) {
-        await setSessionCookie(sessionUser);
-      }
-      return { success: true, data: sessionUser };
-    }
-
-    return { success: false, error: 'Invalid login role.' };
-  } catch (err: any) {
-    console.error('loginAction error:', err);
-    return { success: false, error: err?.message || 'Login failed due to a server error.' };
+  } catch (error: unknown) {
+    console.error('loginAction error:', error);
+    return { success: false, error: errorMessage(error, 'Login failed due to a server error.') };
   }
 }
 
@@ -197,8 +65,8 @@ export async function logoutAction(): Promise<ActionResponse> {
   try {
     await clearSessionCookie();
     return { success: true, data: undefined };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Logout failed.' };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, 'Logout failed.') };
   }
 }
 
@@ -262,9 +130,13 @@ export async function changeStudentPasswordAction(rawInput: unknown): Promise<Ac
     const orgId = await getEffectiveOrgId(student.organization_id);
     const sessionUser: SessionUser = {
       id: student.id,
+      subject_id: student.id,
+      subject_type: 'student',
       organization_id: orgId,
       role: 'student',
       name: student.full_name,
+      issued_at: Date.now(),
+      expires_at: Date.now() + 7 * 24 * 60 * 60 * 1000,
       uid: student.uid,
       student_number: student.student_number,
       must_change_password: false,
@@ -272,8 +144,8 @@ export async function changeStudentPasswordAction(rawInput: unknown): Promise<Ac
     await setSessionCookie(sessionUser);
 
     return { success: true, data: undefined, message: 'Password updated successfully!' };
-  } catch (err: any) {
-    console.error('changeStudentPasswordAction error:', err);
-    return { success: false, error: err?.message || 'Password update failed due to a server error.' };
+  } catch (error: unknown) {
+    console.error('changeStudentPasswordAction error:', error);
+    return { success: false, error: errorMessage(error, 'Password update failed due to a server error.') };
   }
 }
