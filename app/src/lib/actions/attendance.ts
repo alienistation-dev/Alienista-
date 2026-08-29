@@ -156,17 +156,33 @@ export async function recordScanAction(input: ScanInput): Promise<ActionResponse
 }
 
 export async function bulkSyncScansAction(scans: BulkScanInput[]): Promise<ActionResponse<SyncScanResult[]>> {
-  const results: SyncScanResult[] = [];
-  for (const scan of scans) {
-    const res = await recordScanAction(scan);
-    results.push({
-      client_id: scan.client_id,
-      success: res.success,
-      error: !res.success ? res.error : undefined,
-      code: !res.success ? res.code : undefined,
-      data: res.success ? res.data : undefined,
-    });
+  // Auth guard at the bulk entry point — defence-in-depth
+  try {
+    await requireRole('admin', 'officer');
+  } catch {
+    return { success: false, error: 'Unauthorized.' };
   }
+
+  const BATCH_SIZE = 10;
+  const results: SyncScanResult[] = [];
+
+  for (let i = 0; i < scans.length; i += BATCH_SIZE) {
+    const batch = scans.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.all(
+      batch.map(async (scan) => {
+        const res = await recordScanAction(scan);
+        return {
+          client_id: scan.client_id,
+          success: res.success,
+          error: !res.success ? res.error : undefined,
+          code: !res.success ? res.code : undefined,
+          data: res.success ? res.data : undefined,
+        };
+      })
+    );
+    results.push(...batchResults);
+  }
+
   return { success: true, data: results };
 }
 
@@ -180,6 +196,25 @@ export async function manualAttendanceOverrideAction(input: {
 
   const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
+
+  // Validate that student belongs to this org
+  const { data: student } = await admin
+    .from('students')
+    .select('id')
+    .eq('id', input.student_id)
+    .eq('organization_id', orgId)
+    .maybeSingle();
+  if (!student) return { success: false, error: 'Student not found in this organization.' };
+
+  // Validate that event belongs to this org
+  const { data: event } = await admin
+    .from('events')
+    .select('id')
+    .eq('id', input.event_id)
+    .eq('organization_id', orgId)
+    .maybeSingle();
+  if (!event) return { success: false, error: 'Event not found in this organization.' };
+
   const { error } = await admin.from('attendance_records').insert({
     organization_id: orgId,
     student_id: input.student_id,

@@ -304,7 +304,13 @@ export async function bulkImportStudentsCsvAction(
 
     let uid = (row.uid || '').trim();
     if (!uid) {
-      uid = `ST-${new Date().getFullYear()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+      try {
+        uid = await allocateStudentUid(orgId);
+      } catch {
+        failed++;
+        errors.push(`Row ${row.student_number} (${fullName}): Failed to allocate a unique student UID.`);
+        continue;
+      }
     }
 
     const { error } = await admin.from('students').insert({
