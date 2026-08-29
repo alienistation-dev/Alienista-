@@ -113,7 +113,7 @@ export default function LoginPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4 pt-1">
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5">Account identifier</label>
+          <label className="block text-xs font-bold text-slate-700 mb-1.5">Username</label>
           <div className="relative">
             <User className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
             <input
@@ -121,7 +121,7 @@ export default function LoginPage() {
               required
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="Admin username, officer name, student number, or UID"
+              placeholder="Enter your username"
               className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#2D6A4F] focus:bg-white transition-colors"
             />
           </div>
