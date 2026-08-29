@@ -8,6 +8,23 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
+// Extend Window so TypeScript knows about our global stash.
+declare global {
+  interface Window {
+    __pwaInstallEvent?: BeforeInstallPromptEvent;
+  }
+}
+
+// The beforeinstallprompt event can fire before React hydrates on static pages
+// (e.g. /login). We attach a bare window listener as early as possible so the
+// event is never missed, and store it on window for the component to pick up.
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    window.__pwaInstallEvent = e as BeforeInstallPromptEvent;
+  }, { once: true });
+}
+
 export function PwaInstallPrompt() {
   const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
@@ -17,17 +34,23 @@ export function PwaInstallPrompt() {
       void navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(() => undefined);
     }
 
-    const handleBeforeInstallPrompt = (event: Event) => {
-      const e = event as BeforeInstallPromptEvent;
-      e.preventDefault();
+    const isDismissed = sessionStorage.getItem('pwa_install_dismissed');
+
+    const activate = (e: BeforeInstallPromptEvent) => {
       deferredPrompt.current = e;
-      
-      const isDismissed = sessionStorage.getItem('pwa_install_dismissed');
-      if (!isDismissed) {
-        setShowPrompt(true);
-      }
+      if (!isDismissed) setShowPrompt(true);
     };
 
+    // Pick up the event if it already fired before this component mounted.
+    if (window.__pwaInstallEvent) {
+      activate(window.__pwaInstallEvent);
+      window.__pwaInstallEvent = undefined;
+    }
+
+    // Also listen for future firings (e.g. after the app is uninstalled).
+    const handleBeforeInstallPrompt = (event: Event) => {
+      activate(event as BeforeInstallPromptEvent);
+    };
     const handleAppInstalled = () => {
       setShowPrompt(false);
       deferredPrompt.current = null;
@@ -35,7 +58,7 @@ export function PwaInstallPrompt() {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
-    
+
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
@@ -47,12 +70,9 @@ export function PwaInstallPrompt() {
   const install = async () => {
     const promptEvent = deferredPrompt.current;
     if (!promptEvent) return;
-    
     await promptEvent.prompt();
     const choice = await promptEvent.userChoice;
-    if (choice.outcome === 'accepted') {
-      setShowPrompt(false);
-    }
+    if (choice.outcome === 'accepted') setShowPrompt(false);
   };
 
   const dismiss = () => {
@@ -72,3 +92,4 @@ export function PwaInstallPrompt() {
     </div>
   );
 }
+

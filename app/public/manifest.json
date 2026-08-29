@@ -1,6 +1,6 @@
 {
-  "name": "AttendQR - ACS Palawan",
-  "short_name": "AttendQR",
+  "name": "Alienista - ACS Palawan",
+  "short_name": "Alienista",
   "description": "Serverless attendance and QR scanning system for ACS PSU Palawan",
   "start_url": "/",
   "scope": "/",
