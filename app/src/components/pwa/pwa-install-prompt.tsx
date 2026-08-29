@@ -18,10 +18,14 @@ declare global {
 // The beforeinstallprompt event can fire before React hydrates on static pages
 // (e.g. /login). We attach a bare window listener as early as possible so the
 // event is never missed, and store it on window for the component to pick up.
+// We only call preventDefault() when we actually intend to show the custom UI —
+// calling it without a follow-up .prompt() is what triggers the console warning.
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    window.__pwaInstallEvent = e as BeforeInstallPromptEvent;
+    if (!sessionStorage.getItem('pwa_install_dismissed')) {
+      e.preventDefault();
+      window.__pwaInstallEvent = e as BeforeInstallPromptEvent;
+    }
   }, { once: true });
 }
 
