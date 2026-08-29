@@ -77,17 +77,19 @@ export async function changeStudentPasswordAction(rawInput: unknown): Promise<Ac
       return { success: false, error: parsed.error.issues[0].message };
     }
 
-    const { identifier, newPassword } = parsed.data;
+    const { identifier, currentPassword, newPassword } = parsed.data;
     const admin = createAdminClient();
     const cleanIdentifier = identifier.trim();
 
+    // Resolve the student by identifier (student number or UID).
+    // We do NOT fall back to the session here — the caller must always supply
+    // the identifier so we can verify the current password against it.
     let { data: student } = await admin
       .from('students')
       .select('id, organization_id, last_name, first_name, full_name, uid, student_number, password_hash, is_first_login')
       .ilike('student_number', cleanIdentifier)
       .maybeSingle();
 
-    // Fallback: Check by UID
     if (!student) {
       const { data: byUid } = await admin
         .from('students')
@@ -97,21 +99,23 @@ export async function changeStudentPasswordAction(rawInput: unknown): Promise<Ac
       student = byUid;
     }
 
-    // Fallback: Check if session user matches
-    if (!student) {
-      const sessionUser = await getSessionUser();
-      if (sessionUser && sessionUser.role === 'student') {
-        const { data: fallback } = await admin
-          .from('students')
-          .select('id, organization_id, last_name, first_name, full_name, uid, student_number, password_hash, is_first_login')
-          .eq('id', sessionUser.id)
-          .maybeSingle();
-        student = fallback;
-      }
-    }
-
     if (!student) {
       return { success: false, error: 'Student record not found.' };
+    }
+
+    // Verify the caller knows the current password before allowing the change.
+    // For first-login accounts without a hash, verify against the default
+    // (last name uppercased) so the first-login flow still works.
+    let currentPasswordValid = false;
+    if (student.password_hash) {
+      currentPasswordValid = await bcrypt.compare(currentPassword, student.password_hash);
+    } else if (student.is_first_login) {
+      const defaultPass = (student.last_name || student.full_name?.split(' ').pop() || '').trim().toUpperCase();
+      currentPasswordValid = currentPassword.trim().toUpperCase() === defaultPass;
+    }
+
+    if (!currentPasswordValid) {
+      return { success: false, error: 'Current password is incorrect.' };
     }
 
     const newHash = await bcrypt.hash(newPassword, 10);
@@ -126,7 +130,7 @@ export async function changeStudentPasswordAction(rawInput: unknown): Promise<Ac
       return { success: false, error: 'Failed to update password in database.' };
     }
 
-    // Update session cookie immediately so must_change_password is false
+    // Issue a full session now that the password is confirmed changed.
     const orgId = await getEffectiveOrgId(student.organization_id);
     const sessionUser: SessionUser = {
       id: student.id,

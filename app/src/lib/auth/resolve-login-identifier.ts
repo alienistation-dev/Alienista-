@@ -66,7 +66,9 @@ function buildSessionUser(
 async function matchesSecret(candidate: LoginCandidate, secret: string): Promise<boolean> {
   const { row, type } = candidate;
   if (type === 'admin') {
-    if (!row.admin_password_hash) return secret === 'admin123';
+    // No plaintext fallback — if no hash is set, require the admin to set a
+    // password via the Settings page before they can log in.
+    if (!row.admin_password_hash) return false;
     return await bcrypt.compare(secret, row.admin_password_hash);
   }
   if (type === 'officer') {

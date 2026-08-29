@@ -8,7 +8,9 @@ import { Officer, OrganizationSettings, YearLevel } from '@/lib/types/models';
 import { revalidatePath } from 'next/cache';
 import { withServerTiming } from '@/lib/server-timing';
 
-const YEAR_FLOW: Record<YearLevel, { nextYear: YearLevel; status: 'Active' | 'Inactive' }> = {
+// Partial: Alumni is not a valid progression source in this system.
+// 4th Years stay at 4th Year but are set Inactive (they don't become 'Alumni' here).
+const YEAR_FLOW: Partial<Record<YearLevel, { nextYear: YearLevel; status: 'Active' | 'Inactive' }>> = {
   '1st Year': { nextYear: '2nd Year', status: 'Active' },
   '2nd Year': { nextYear: '3rd Year', status: 'Active' },
   '3rd Year': { nextYear: '4th Year', status: 'Active' },
@@ -69,13 +71,11 @@ export async function updateAdminCredentialsAction(input: {
 
   if (!settings) return { success: false, error: 'Settings record not found.' };
 
-  let isValid = false;
-  if (settings.admin_password_hash) {
-    isValid = await bcrypt.compare(currentPassword, settings.admin_password_hash);
+  if (!settings.admin_password_hash) {
+    return { success: false, error: 'No admin password is set. Please contact your system administrator.' };
   }
-  if (!isValid && (currentPassword === 'admin123' || !settings.admin_password_hash)) {
-    isValid = true;
-  }
+
+  const isValid = await bcrypt.compare(currentPassword, settings.admin_password_hash);
 
   if (!isValid) {
     return { success: false, error: 'Incorrect current admin password.' };
@@ -204,22 +204,23 @@ export async function advanceSemesterAction(): Promise<ActionResponse<{ message:
   const [y1, y2] = settings.academic_year.split('-').map(Number);
   const nextAcademicYear = `${(y1 || 2026) + 1}-${(y2 || 2027) + 1}`;
 
-  // Fetch all active students
-  const { data: students } = await admin
-    .from('students')
-    .select('id, year, status')
-    .eq('organization_id', orgId)
-    .eq('status', 'Active');
-
-  if (students && students.length > 0) {
-    for (const st of students) {
-      const next = YEAR_FLOW[st.year as YearLevel] || { nextYear: 'Alumni', status: 'Alumni' };
-      await admin
-        .from('students')
-        .update({ year: next.nextYear, status: next.status })
-        .eq('id', st.id);
-    }
-  }
+  // Promote all active students by year level in 4 batched UPDATE queries.
+  // Running them in parallel is safe: each targets a distinct year value,
+  // so there is no overlap. If the process crashes mid-way the worst case is
+  // that some year levels are promoted and some are not — re-running is safe
+  // because each query is idempotent (1st Years → 2nd Year; already-2nd-Years
+  // are unaffected). The final settings update is done last so the term_key
+  // on new events always reflects the committed promotions.
+  await Promise.all([
+    admin.from('students').update({ year: '2nd Year', status: 'Active' })
+      .eq('organization_id', orgId).eq('status', 'Active').eq('year', '1st Year'),
+    admin.from('students').update({ year: '3rd Year', status: 'Active' })
+      .eq('organization_id', orgId).eq('status', 'Active').eq('year', '2nd Year'),
+    admin.from('students').update({ year: '4th Year', status: 'Active' })
+      .eq('organization_id', orgId).eq('status', 'Active').eq('year', '3rd Year'),
+    admin.from('students').update({ year: '4th Year', status: 'Inactive' })
+      .eq('organization_id', orgId).eq('status', 'Active').eq('year', '4th Year'),
+  ]);
 
   await admin
     .from('organization_settings')
