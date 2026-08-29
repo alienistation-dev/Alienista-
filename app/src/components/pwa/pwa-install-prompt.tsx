@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Download, X } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -9,8 +9,8 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function PwaInstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [dismissed, setDismissed] = useState(false);
+  const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null);
+  const [showPrompt, setShowPrompt] = useState(false);
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
@@ -18,27 +18,46 @@ export function PwaInstallPrompt() {
     }
 
     const handleBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setDeferredPrompt(event as BeforeInstallPromptEvent);
-      setDismissed(false);
+      const e = event as BeforeInstallPromptEvent;
+      e.preventDefault();
+      deferredPrompt.current = e;
+      
+      const isDismissed = sessionStorage.getItem('pwa_install_dismissed');
+      if (!isDismissed) {
+        setShowPrompt(true);
+      }
     };
-    const handleAppInstalled = () => setDeferredPrompt(null);
+
+    const handleAppInstalled = () => {
+      setShowPrompt(false);
+      deferredPrompt.current = null;
+    };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
+    
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
-  if (!deferredPrompt || dismissed) return null;
+  if (!showPrompt) return null;
 
   const install = async () => {
-    const promptEvent = deferredPrompt;
-    setDeferredPrompt(null);
+    const promptEvent = deferredPrompt.current;
+    if (!promptEvent) return;
+    
     await promptEvent.prompt();
-    await promptEvent.userChoice;
+    const choice = await promptEvent.userChoice;
+    if (choice.outcome === 'accepted') {
+      setShowPrompt(false);
+    }
+  };
+
+  const dismiss = () => {
+    sessionStorage.setItem('pwa_install_dismissed', 'true');
+    setShowPrompt(false);
   };
 
   return (
@@ -49,7 +68,7 @@ export function PwaInstallPrompt() {
         <p className="text-xs text-slate-500">Add a faster shortcut to this device.</p>
       </div>
       <button type="button" onClick={() => void install()} className="px-3 py-2 rounded-lg bg-[#2D6A4F] text-white text-xs font-bold hover:bg-[#1B4332]">Install</button>
-      <button type="button" onClick={() => setDismissed(true)} title="Dismiss install prompt" aria-label="Dismiss install prompt" className="p-1.5 text-slate-400 hover:text-slate-700"><X className="w-4 h-4" /></button>
+      <button type="button" onClick={dismiss} title="Dismiss install prompt" aria-label="Dismiss install prompt" className="p-1.5 text-slate-400 hover:text-slate-700"><X className="w-4 h-4" /></button>
     </div>
   );
 }

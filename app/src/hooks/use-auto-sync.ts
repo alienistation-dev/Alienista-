@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { bulkSyncScansAction } from '@/lib/actions/attendance';
 import { offlineDB } from '@/lib/offline-db';
 import { reconcileSyncResults } from '@/lib/offline-sync';
@@ -10,6 +10,7 @@ export function useAutoSync(organizationId: string, onSyncFinished?: () => void)
   const [isOnline, setIsOnline] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
+  const isSyncingRef = useRef(false); // ref-based guard prevents stale-closure race
   const [syncProgress, setSyncProgress] = useState({ completed: 0, total: 0 });
   const [lastSuccessAt, setLastSuccessAt] = useState<string | null>(null);
   const [failures, setFailures] = useState<SyncFailure[]>([]);
@@ -22,7 +23,8 @@ export function useAutoSync(organizationId: string, onSyncFinished?: () => void)
   }, [organizationId]);
 
   const triggerSync = useCallback(async () => {
-    if (!navigator.onLine || isSyncing || !organizationId) return;
+    if (!navigator.onLine || isSyncingRef.current || !organizationId) return;
+    isSyncingRef.current = true;
     setIsSyncing(true);
     try {
       const pending = await offlineDB.getPendingScans(organizationId);
@@ -69,9 +71,10 @@ export function useAutoSync(organizationId: string, onSyncFinished?: () => void)
       console.warn('Auto sync error:', error);
       await refreshPendingState();
     } finally {
+      isSyncingRef.current = false;
       setIsSyncing(false);
     }
-  }, [isSyncing, onSyncFinished, organizationId, refreshPendingState]);
+  }, [onSyncFinished, organizationId, refreshPendingState]); // isSyncing removed — ref is the guard
 
   useEffect(() => {
     if (!organizationId) return;

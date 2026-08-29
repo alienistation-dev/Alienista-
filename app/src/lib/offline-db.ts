@@ -191,6 +191,11 @@ class OfflineDatabase {
     eventId: string,
     students: Array<Pick<CachedRosterStudent, 'uid' | 'full_name' | 'avatar_url' | 'status'>>
   ): Promise<void> {
+    // NOTE: This delete-then-insert pattern is safe within a single IDB transaction
+    // but assumes a single active tab. Multi-tab concurrent cacheRoster calls for
+    // the same scope could race. This is acceptable for a PWA scanner use case
+    // where only one tab scans at a time. If multi-tab support is needed, use
+    // BroadcastChannel to coordinate cache updates.
     const db = await this.getDB();
     const scopeKey = buildOfflineScope(organizationId, eventId);
     const tx = db.transaction(STORES.students, 'readwrite');
@@ -233,6 +238,9 @@ class OfflineDatabase {
     eventId: string,
     students: Array<{ avatar_url: string | null }>
   ): Promise<void> {
+    // NOTE: Avatar URLs are fetched as public CORS requests. This requires the
+    // student-avatars bucket to remain public. If the bucket is ever made private,
+    // fetch signed URLs server-side before calling this method.
     if (typeof window === 'undefined' || !('caches' in window)) return;
     const cache = await caches.open(`${AVATAR_CACHE_PREFIX}${organizationId}_${eventId}`);
     await Promise.allSettled(students.filter((student) => student.avatar_url).map(async (student) => {
