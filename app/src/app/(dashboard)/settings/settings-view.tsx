@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
-import { Officer, OrganizationSettings } from '@/lib/types/models';
+import { Officer, OrganizationSettings, SanctionPolicy } from '@/lib/types/models';
 import {
   addOfficerAction,
   resetOfficerPinAction,
@@ -10,15 +10,18 @@ import {
   updateAdminCredentialsAction,
 } from '@/lib/actions/settings';
 import { Settings, Shield, UserCheck, Plus, Trash2, KeyRound, ArrowRight, Save, AlertTriangle } from 'lucide-react';
+import { SanctionsPolicyEditor } from './sanctions-policy-editor';
 
 export function SettingsView({
   initialSettings,
   initialOfficers,
+  initialActivePolicy,
 }: {
   initialSettings: OrganizationSettings;
   initialOfficers: Officer[];
+  initialActivePolicy: SanctionPolicy | null;
 }) {
-  const [settings, setSettings] = useState<OrganizationSettings>(initialSettings);
+  const [settings] = useState<OrganizationSettings>(initialSettings);
   const [officers, setOfficers] = useState<Officer[]>(initialOfficers);
   const [isPending, startTransition] = useTransition();
   const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
@@ -146,7 +149,7 @@ export function SettingsView({
           <span>Admin Master Credentials</span>
         </h3>
         <p className="text-xs text-slate-500">
-          Configure shared executive board credentials (default: <b>admin</b> / <b>admin123</b>).
+          Configure the shared executive board sign-in credentials.
         </p>
 
         <form onSubmit={handleUpdateAdminCreds} className="space-y-3">
@@ -181,7 +184,7 @@ export function SettingsView({
               required
               value={currentAdminPassword}
               onChange={(e) => setCurrentAdminPassword(e.target.value)}
-              placeholder="Current admin password (default: admin123)"
+              placeholder="Current admin password"
               className="w-full bg-[#F8FAF9] border border-[#C2E0CC] rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#2D6A4F]"
             />
           </div>
@@ -240,6 +243,11 @@ export function SettingsView({
         </div>
       </div>
 
+      <SanctionsPolicyEditor
+        initialEnabled={Boolean(settings.sanctions_enabled)}
+        initialPolicy={initialActivePolicy}
+      />
+
       {/* Officer Roster & Access Control */}
       <div className="p-6 bg-white border border-[#E5EBE5] rounded-3xl shadow-xs space-y-5">
         <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -288,7 +296,7 @@ export function SettingsView({
             <tbody className="divide-y divide-[#E5EBE5] text-slate-700">
               {officers.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="py-6 text-center text-slate-400">
+                  <td colSpan={3} className="py-6 text-center text-muted-foreground">
                     No officer accounts created yet.
                   </td>
                 </tr>

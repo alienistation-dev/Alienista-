@@ -100,11 +100,11 @@ export default async function DashboardPage() {
         <div className="bg-white border border-[#E5EBE5] rounded-2xl p-5 sm:p-6 flex flex-col shadow-xs">
           <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center justify-between">
             <span>Recent Activity</span>
-            <Clock className="w-4 h-4 text-slate-400" />
+            <Clock className="w-4 h-4 text-muted-foreground" />
           </h3>
           <div className="space-y-2.5 flex-1">
             {recentAttendance.length === 0 ? (
-              <div className="text-xs text-slate-400 py-12 text-center">No attendance scans recorded yet.</div>
+              <div className="py-12 text-center text-xs text-muted-foreground">No attendance scans recorded yet.</div>
             ) : (
               recentAttendance.slice(0, 5).map((item: RecentAttendanceProjection) => (
                 <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAF9] border border-[#E5EBE5] text-xs">
@@ -117,7 +117,7 @@ export default async function DashboardPage() {
                       <CheckCircle2 className="w-3 h-3" />
                       Present
                     </span>
-                    <div className="text-[10px] text-slate-400 font-mono">
+                    <div className="font-mono text-[10px] text-muted-foreground">
                       {new Date(item.recorded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>

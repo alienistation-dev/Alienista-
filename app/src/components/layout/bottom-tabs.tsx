@@ -3,7 +3,6 @@
 import React from 'react';
 import { NavigationLink } from './navigation-link';
 import { usePathname } from 'next/navigation';
-import { SessionUser } from '@/lib/types/actions';
 import {
   LayoutDashboard,
   Users,
@@ -12,7 +11,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 
-export function BottomTabs({ user }: { user: SessionUser }) {
+export function BottomTabs() {
   const pathname = usePathname();
 
   const tabs = [

@@ -20,7 +20,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <Header user={user} />
         <main className="p-4 sm:p-6 max-w-7xl w-full mx-auto flex-1">{children}</main>
       </div>
-      <BottomTabs user={user} />
+      <BottomTabs />
     </div>
   );
 }

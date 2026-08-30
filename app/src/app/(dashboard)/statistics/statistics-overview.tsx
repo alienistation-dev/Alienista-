@@ -14,7 +14,7 @@ export function StatisticsOverview({ data }: { data: StatisticsOverviewData }) {
           </h2>
           <div className="space-y-3">
             {data.byEventPct.length === 0 ? (
-              <div className="text-xs text-slate-400 py-6 text-center">No events recorded.</div>
+              <div className="py-6 text-center text-xs text-muted-foreground">No events recorded.</div>
             ) : data.byEventPct.map((event) => (
               <div key={event.label} className="space-y-1 text-xs">
                 <div className="flex justify-between text-slate-700">
@@ -39,7 +39,7 @@ export function StatisticsOverview({ data }: { data: StatisticsOverviewData }) {
               <thead className="bg-[#F8FAF9] text-slate-600"><tr><th className="py-2.5 px-3.5 font-bold uppercase text-[10px]">Officer Name</th><th className="py-2.5 px-3.5 font-bold uppercase text-[10px] text-right">Scans Logged</th></tr></thead>
               <tbody className="divide-y divide-[#E5EBE5] text-slate-700">
                 {Object.keys(data.officerLogs).length === 0 ? (
-                  <tr><td colSpan={2} className="py-4 text-center text-slate-400">No officer scan logs.</td></tr>
+                  <tr><td colSpan={2} className="py-4 text-center text-muted-foreground">No officer scan logs.</td></tr>
                 ) : Object.entries(data.officerLogs).map(([officer, count]) => (
                   <tr key={officer} className="hover:bg-[#F8FAF9]"><td className="py-2.5 px-3.5 font-semibold text-slate-900">{officer}</td><td className="py-2.5 px-3.5 text-right font-mono font-bold text-[#1B4332]">{count}</td></tr>
                 ))}

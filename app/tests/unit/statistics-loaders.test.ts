@@ -12,6 +12,7 @@ function query(data: unknown, error: { message: string } | null = null) {
     eq: (column: string, value: string) => { if (column === 'organization_id') state.organizationId = value; return builder; },
     order: () => builder,
     limit: () => builder,
+    range: async () => ({ data, count: Array.isArray(data) ? data.length : 0, error }),
     then: (resolve: (value: unknown) => unknown) => resolve({ data, error }),
   };
   return { builder, state };
@@ -53,7 +54,15 @@ describe('statistics route loaders', () => {
 
     const result = await getStudentStatisticsAction();
 
-    expect(result).toEqual({ success: true, data: { studentsStats: [{ uid: 'ST-1', name: 'Ada', year: '4th Year', count: 3, attendance_pct: 75 }] } });
+    expect(result).toEqual({
+      success: true,
+      data: {
+        items: [{ uid: 'ST-1', name: 'Ada', year: '4th Year', count: 3, attendance_pct: 75 }],
+        total: 1,
+        page: 1,
+        pageSize: 25,
+      },
+    });
     expect(state?.selection).toBe('uid, name, year, count, attendance_pct');
     expect(state?.organizationId).toBe('org-1');
   });

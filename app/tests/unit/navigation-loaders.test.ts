@@ -9,6 +9,7 @@ vi.mock('@/lib/supabase/admin', () => ({
 }));
 
 import { getDashboardDataAction } from '@/lib/actions/dashboard';
+import { getSettingsDataAction } from '@/lib/actions/settings';
 import { getBadgeStudentsAction, getScannerStudentsAction } from '@/lib/actions/students';
 
 function query(data: unknown) {
@@ -18,6 +19,7 @@ function query(data: unknown) {
     eq: () => builder,
     order: () => builder,
     limit: () => builder,
+    range: async () => ({ data, count: Array.isArray(data) ? data.length : 0, error: null }),
     maybeSingle: async () => ({ data, error: null }),
     then: (resolve: (value: unknown) => unknown) => resolve({ data, error: null }),
   };
@@ -57,5 +59,33 @@ describe('navigation data loaders', () => {
 
     expect(selections.students).toContain('id, organization_id, uid, student_number, full_name, status, avatar_url');
     expect(selections.students).toContain('id, uid, student_number, full_name, course, year, section, status, avatar_url');
+  });
+
+  it('returns sanctions state with the active policy and tiers from settings', async () => {
+    mocks.from.mockImplementation((table: string) => {
+      if (table === 'organization_settings') {
+        return query({ id: 'settings-1', organization_id: 'org-1', sanctions_enabled: true }).builder;
+      }
+      if (table === 'sanction_policies') {
+        return query({
+          id: 'policy-2',
+          organization_id: 'org-1',
+          version: 2,
+          mode: 'weighted_missed_points',
+          sanction_tiers: [{ id: 'tier-1', label: 'Service', minimum_missed_points: 5 }],
+        }).builder;
+      }
+      return query([]).builder;
+    });
+
+    const result = await getSettingsDataAction();
+
+    expect(result).toMatchObject({
+      success: true,
+      data: {
+        settings: { sanctions_enabled: true },
+        activePolicy: { id: 'policy-2', tiers: [{ id: 'tier-1', label: 'Service' }] },
+      },
+    });
   });
 });

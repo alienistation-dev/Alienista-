@@ -30,4 +30,18 @@ describe('attendance status evaluation', () => {
       'Outside active attendance window.'
     );
   });
+
+  it('accepts a scan exactly when the slot opens', () => {
+    expect(evaluateAttendanceStatus('2026-08-22T08:00:00.000Z', slot).status).toBe('on_time');
+  });
+
+  it('accepts a scan exactly when the slot closes', () => {
+    expect(evaluateAttendanceStatus('2026-08-22T09:00:00.000Z', slot).status).toBe('late');
+  });
+
+  it('rejects a scan before the slot opens', () => {
+    expect(() => evaluateAttendanceStatus('2026-08-22T07:59:59.999Z', slot)).toThrow(
+      'Outside active attendance window.'
+    );
+  });
 });

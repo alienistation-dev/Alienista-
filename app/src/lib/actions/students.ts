@@ -3,32 +3,54 @@
 import bcrypt from 'bcryptjs';
 import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/session';
-import { ActionResponse } from '@/lib/types/actions';
+import { ActionResponse, PageRequest, PaginatedResult } from '@/lib/types/actions';
 import { BadgeStudent, MemberStatus, ScannerStudent, Student, YearLevel } from '@/lib/types/models';
 import { studentSchema } from '@/lib/validations/students';
 import { revalidatePath } from 'next/cache';
 import { allocateStudentUid } from '@/lib/students/uid';
 import { withServerTiming } from '@/lib/server-timing';
+import { normalizePageRequest, pageRange } from '@/lib/pagination';
 
 const STUDENT_PROJECTION = 'id, organization_id, uid, student_number, first_name, last_name, full_name, course, year, section, status, is_first_login, avatar_url, created_at, updated_at';
 
 const SCANNER_PROJECTION = 'id, organization_id, uid, student_number, full_name, status, avatar_url';
 const BADGE_PROJECTION = 'id, uid, student_number, full_name, course, year, section, status, avatar_url';
 
-export async function getStudentsAction(): Promise<ActionResponse<Student[]>> {
+export async function getStudentsAction(
+  input?: Partial<PageRequest>
+): Promise<ActionResponse<PaginatedResult<Student>>> {
   const user = await getSessionUser();
   if (!user) return { success: false, error: 'Unauthorized' };
 
+  const request = normalizePageRequest(input, 10);
+  const { from, to } = pageRange(request.page, request.pageSize);
   const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
-  const { data, error } = await withServerTiming('students', async () => admin
+  let query = admin
     .from('students')
-    .select(STUDENT_PROJECTION)
+    .select(STUDENT_PROJECTION, { count: 'exact' })
     .eq('organization_id', orgId)
-    .order('full_name', { ascending: true }));
+    .order('full_name', { ascending: true });
+
+  if (request.query) {
+    const search = `%${request.query}%`;
+    query = query.or(`full_name.ilike.${search},uid.ilike.${search},student_number.ilike.${search}`);
+  }
+  if (request.year) query = query.eq('year', request.year);
+  if (request.status) query = query.eq('status', request.status);
+
+  const { data, error, count } = await withServerTiming('students', async () => query.range(from, to));
 
   if (error) return { success: false, error: error.message };
-  return { success: true, data: data as Student[] };
+  return {
+    success: true,
+    data: {
+      items: (data || []) as Student[],
+      total: count || 0,
+      page: request.page,
+      pageSize: request.pageSize,
+    },
+  };
 }
 
 export async function getScannerStudentsAction(): Promise<ActionResponse<ScannerStudent[]>> {
@@ -41,14 +63,35 @@ export async function getScannerStudentsAction(): Promise<ActionResponse<Scanner
   return { success: true, data: (data || []) as ScannerStudent[] };
 }
 
-export async function getBadgeStudentsAction(): Promise<ActionResponse<BadgeStudent[]>> {
+export async function getBadgeStudentsAction(
+  input?: Partial<PageRequest>
+): Promise<ActionResponse<PaginatedResult<BadgeStudent>>> {
   const user = await getSessionUser();
   if (!user) return { success: false, error: 'Unauthorized' };
+  const request = normalizePageRequest(input, 8);
+  const { from, to } = pageRange(request.page, request.pageSize);
   const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
-  const { data, error } = await admin.from('students').select(BADGE_PROJECTION).eq('organization_id', orgId).order('full_name', { ascending: true });
+  let query = admin
+    .from('students')
+    .select(BADGE_PROJECTION, { count: 'exact' })
+    .eq('organization_id', orgId)
+    .order('full_name', { ascending: true });
+  if (request.query) {
+    const search = `%${request.query}%`;
+    query = query.or(`full_name.ilike.${search},uid.ilike.${search},student_number.ilike.${search}`);
+  }
+  const { data, error, count } = await query.range(from, to);
   if (error) return { success: false, error: error.message };
-  return { success: true, data: (data || []) as BadgeStudent[] };
+  return {
+    success: true,
+    data: {
+      items: (data || []) as BadgeStudent[],
+      total: count || 0,
+      page: request.page,
+      pageSize: request.pageSize,
+    },
+  };
 }
 
 export async function createStudentAction(rawInput: unknown): Promise<ActionResponse<Student>> {
@@ -128,10 +171,6 @@ export async function updateStudentAction(id: string, rawInput: unknown): Promis
     status: parsed.data.status,
   };
 
-  if (parsed.data.avatar_url !== undefined) {
-    updatePayload.avatar_url = parsed.data.avatar_url || null;
-  }
-
   const { error } = await admin
     .from('students')
     .update(updatePayload)
@@ -143,71 +182,107 @@ export async function updateStudentAction(id: string, rawInput: unknown): Promis
   return { success: true, data: undefined };
 }
 
-export async function uploadStudentAvatarAction(formData: FormData): Promise<ActionResponse<{ publicUrl: string }>> {
+function avatarStoragePath(publicUrl: string | null): string | null {
+  if (!publicUrl) return null;
+  const marker = '/storage/v1/object/public/student-avatars/';
+  const markerIndex = publicUrl.indexOf(marker);
+  return markerIndex === -1 ? null : decodeURIComponent(publicUrl.slice(markerIndex + marker.length));
+}
+
+function validateAvatarFile(formData: FormData): { file: File } | { error: string } {
+  const file = formData.get('file');
+  if (!(file instanceof File)) return { error: 'No image file provided.' };
+  const maxSize = 2 * 1024 * 1024;
+  if (file.size > maxSize) return { error: 'Image size exceeds the 2MB limit. Please upload a smaller image.' };
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  if (!allowedTypes.includes(file.type.toLowerCase())) {
+    return { error: 'Invalid file format. Only JPG, PNG, and WebP images are allowed (no GIFs).' };
+  }
+  return { file };
+}
+
+export async function replaceStudentAvatarAction(
+  studentId: string,
+  formData: FormData
+): Promise<ActionResponse<{ publicUrl: string }>> {
   try {
     const user = await getSessionUser();
-    if (!user || (user.role !== 'admin' && user.role !== 'officer')) {
-      return { success: false, error: 'Unauthorized. Admin or officer access required.' };
-    }
-
-    const file = formData.get('file') as File | null;
-    if (!file) {
-      return { success: false, error: 'No image file provided.' };
-    }
-
-    // Size limit: 2MB (2 * 1024 * 1024 bytes)
-    const MAX_SIZE = 2 * 1024 * 1024;
-    if (file.size > MAX_SIZE) {
-      return { success: false, error: 'Image size exceeds the 2MB limit. Please upload a smaller image.' };
-    }
-
-    // MIME type validation: strictly JPEG, PNG, WebP (GIF explicitly blocked)
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!allowedTypes.includes(file.type.toLowerCase()) || file.type.toLowerCase() === 'image/gif') {
-      return { success: false, error: 'Invalid file format. Only JPG, PNG, and WebP images are allowed (no GIFs).' };
-    }
+    if (!user || user.role !== 'admin') return { success: false, error: 'Only admins can replace student photos.' };
+    const validated = validateAvatarFile(formData);
+    if ('error' in validated) return { success: false, error: validated.error };
+    const { file } = validated;
 
     const orgId = await getEffectiveOrgId(user.organization_id);
     const admin = createAdminClient();
+    const { data: student, error: studentError } = await admin
+      .from('students')
+      .select('id, avatar_url')
+      .eq('id', studentId)
+      .eq('organization_id', orgId)
+      .maybeSingle();
+    if (studentError) return { success: false, error: studentError.message };
+    if (!student) return { success: false, error: 'Student not found in this organization.' };
 
-    // Ensure bucket exists
-    const { data: buckets } = await admin.storage.listBuckets();
-    if (!buckets?.some((b) => b.name === 'student-avatars')) {
-      await admin.storage.createBucket('student-avatars', {
-        public: true,
-        fileSizeLimit: MAX_SIZE,
-        allowedMimeTypes: allowedTypes,
-      });
-    }
-
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const cleanExt = ext === 'jpeg' ? 'jpg' : ext;
-    const studentUid = (formData.get('student_uid') as string) || 'avatar';
-    const filePath = `${orgId}/${studentUid}_${Date.now()}.${cleanExt}`;
+    const extension = file.type.toLowerCase() === 'image/webp'
+      ? 'webp'
+      : file.type.toLowerCase() === 'image/png' ? 'png' : 'jpg';
+    const filePath = `${orgId}/${studentId}/avatar-${Date.now()}.${extension}`;
 
     const buffer = Buffer.from(await file.arrayBuffer());
-
     const { error: uploadError } = await admin.storage
       .from('student-avatars')
       .upload(filePath, buffer, {
         contentType: file.type,
-        upsert: true,
+        upsert: false,
       });
-
-    if (uploadError) {
-      console.error('Storage upload error:', uploadError);
-      return { success: false, error: `Failed to upload image: ${uploadError.message}` };
-    }
+    if (uploadError) return { success: false, error: `Failed to upload image: ${uploadError.message}` };
 
     const { data: { publicUrl } } = admin.storage
       .from('student-avatars')
       .getPublicUrl(filePath);
 
+    const { data: updated, error: updateError } = await admin
+      .from('students')
+      .update({ avatar_url: publicUrl })
+      .eq('id', studentId)
+      .eq('organization_id', orgId)
+      .select('id')
+      .maybeSingle();
+    if (updateError || !updated) {
+      await admin.storage.from('student-avatars').remove([filePath]);
+      return { success: false, error: updateError?.message || 'Student photo could not be updated.' };
+    }
+
+    const previousPath = avatarStoragePath(student.avatar_url);
+    if (previousPath && previousPath !== filePath) {
+      await admin.storage.from('student-avatars').remove([previousPath]);
+    }
+
+    revalidatePath('/students');
+    revalidatePath('/qr-generator');
     return { success: true, data: { publicUrl } };
   } catch (err: unknown) {
-    console.error('uploadStudentAvatarAction error:', err);
     return { success: false, error: err instanceof Error ? err.message : 'Failed to upload student photo.' };
   }
+}
+
+export async function removeStudentAvatarAction(studentId: string): Promise<ActionResponse> {
+  const user = await getSessionUser();
+  if (!user || user.role !== 'admin') return { success: false, error: 'Only admins can remove student photos.' };
+  const orgId = await getEffectiveOrgId(user.organization_id);
+  const admin = createAdminClient();
+  const { data: student, error: readError } = await admin.from('students').select('id, avatar_url')
+    .eq('id', studentId).eq('organization_id', orgId).maybeSingle();
+  if (readError) return { success: false, error: readError.message };
+  if (!student) return { success: false, error: 'Student not found in this organization.' };
+  const { error } = await admin.from('students').update({ avatar_url: null })
+    .eq('id', studentId).eq('organization_id', orgId);
+  if (error) return { success: false, error: error.message };
+  const previousPath = avatarStoragePath(student.avatar_url);
+  if (previousPath) await admin.storage.from('student-avatars').remove([previousPath]);
+  revalidatePath('/students');
+  revalidatePath('/qr-generator');
+  return { success: true, data: undefined };
 }
 
 export async function deleteStudentAction(id: string): Promise<ActionResponse> {

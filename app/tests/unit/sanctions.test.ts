@@ -50,6 +50,24 @@ describe('semester assessment calculation', () => {
     ]);
   });
 
+  it('uses an awarded-points override instead of the normal attendance calculation', () => {
+    const overriddenEvents: AssessmentEventInput[] = [{
+      ...events[0],
+      attendance: [
+        { slot_id: 'slot-am', attendance_status: 'late', late_penalty_percent: 40, earned_points_override: 4.5 },
+        { slot_id: 'slot-pm', attendance_status: 'late', late_penalty_percent: 40, earned_points_override: null },
+      ],
+    }];
+
+    const result = calculateStudentAssessment('student-1', overriddenEvents, weightedPolicy);
+
+    expect(result.earned_points).toBe(7.5);
+    expect(result.contributions[0].slots).toEqual([
+      expect.objectContaining({ slot_id: 'slot-am', earned_points: 4.5 }),
+      expect.objectContaining({ slot_id: 'slot-pm', earned_points: 3 }),
+    ]);
+  });
+
   it('makes the selected sanction tier and threshold transparent', () => {
     const tier = selectSanctionTier(6, 0.4, weightedPolicy);
     expect(tier).toMatchObject({ label: 'Service', matched_threshold: 'Missed points >= 5' });

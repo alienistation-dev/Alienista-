@@ -3,24 +3,16 @@
 import bcrypt from 'bcryptjs';
 import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/session';
-import { ActionResponse } from '@/lib/types/actions';
-import { Officer, OrganizationSettings, YearLevel } from '@/lib/types/models';
+import { ActionResponse, SanctionPolicyVersionInput } from '@/lib/types/actions';
+import { Officer, OrganizationSettings, SanctionPolicy } from '@/lib/types/models';
 import { revalidatePath } from 'next/cache';
 import { withServerTiming } from '@/lib/server-timing';
-
-// Partial: Alumni is not a valid progression source in this system.
-// 4th Years stay at 4th Year but are set Inactive (they don't become 'Alumni' here).
-const YEAR_FLOW: Partial<Record<YearLevel, { nextYear: YearLevel; status: 'Active' | 'Inactive' }>> = {
-  '1st Year': { nextYear: '2nd Year', status: 'Active' },
-  '2nd Year': { nextYear: '3rd Year', status: 'Active' },
-  '3rd Year': { nextYear: '4th Year', status: 'Active' },
-  '4th Year': { nextYear: '4th Year', status: 'Inactive' },
-};
 
 export async function getSettingsDataAction(): Promise<
   ActionResponse<{
     settings: OrganizationSettings;
     officers: Officer[];
+    activePolicy: SanctionPolicy | null;
   }>
 > {
   const user = await getSessionUser();
@@ -29,9 +21,10 @@ export async function getSettingsDataAction(): Promise<
   const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
 
-  const [{ data: settings }, { data: officers }] = await withServerTiming('settings', () => Promise.all([
-    admin.from('organization_settings').select('id, organization_id, academic_year, semester, admin_username, updated_at').eq('organization_id', orgId).maybeSingle(),
+  const [{ data: settings }, { data: officers }, { data: activePolicy }] = await withServerTiming('settings', () => Promise.all([
+    admin.from('organization_settings').select('id, organization_id, academic_year, semester, admin_username, sanctions_enabled, updated_at').eq('organization_id', orgId).maybeSingle(),
     admin.from('officers').select('id, organization_id, name, status, created_at, updated_at').eq('organization_id', orgId).order('name', { ascending: true }),
+    admin.from('sanction_policies').select('*, sanction_tiers(*)').eq('organization_id', orgId).eq('is_active', true).order('version', { ascending: false }).limit(1).maybeSingle(),
   ]));
 
   return {
@@ -43,11 +36,75 @@ export async function getSettingsDataAction(): Promise<
         academic_year: '2026-2027',
         semester: 'First Semester',
         admin_username: 'admin',
+        sanctions_enabled: false,
         updated_at: new Date().toISOString(),
       },
       officers: (officers as Officer[]) || [],
+      activePolicy: activePolicy
+        ? ({ ...activePolicy, tiers: activePolicy.sanction_tiers || [] } as SanctionPolicy)
+        : null,
     },
   };
+}
+
+function policyInputError(input: SanctionPolicyVersionInput): string | null {
+  if (!input.name.trim()) return 'Policy name is required.';
+  if (input.mode !== 'weighted_missed_points' && input.mode !== 'attendance_percentage') return 'Select a valid policy mode.';
+  if (input.tiers.length === 0) return 'Add at least one valid sanction tier.';
+  if (input.tiers.some((tier) => !tier.label.trim() || !tier.obligation_text.trim())) {
+    return 'Every tier needs a name and obligation.';
+  }
+  if (input.tiers.some((tier) => !Number.isFinite(tier.threshold))) return 'Every tier needs a numeric threshold.';
+  if (input.mode === 'weighted_missed_points' && input.tiers.some((tier) => tier.threshold < 0)) {
+    return 'Weighted missed-points thresholds cannot be negative.';
+  }
+  if (input.mode === 'attendance_percentage' && input.tiers.some((tier) => tier.threshold < 0 || tier.threshold > 100)) {
+    return 'Attendance thresholds must be between 0 and 100 percent.';
+  }
+  return null;
+}
+
+export async function createSanctionPolicyVersionAction(
+  input: SanctionPolicyVersionInput
+): Promise<ActionResponse<SanctionPolicy>> {
+  const user = await getSessionUser();
+  if (!user || user.role !== 'admin') return { success: false, error: 'Only admins can configure sanction policies.' };
+  const validationError = policyInputError(input);
+  if (validationError) return { success: false, error: validationError };
+
+  const orgId = await getEffectiveOrgId(user.organization_id);
+  const admin = createAdminClient();
+  const tiers = input.tiers.map((tier) => ({
+    label: tier.label.trim(),
+    threshold: tier.threshold,
+    obligation_text: tier.obligation_text.trim(),
+  }));
+  const { data, error } = await admin.rpc('create_sanction_policy_version', {
+    p_organization_id: orgId,
+    p_name: input.name.trim(),
+    p_mode: input.mode,
+    p_tiers: tiers,
+    p_activate: input.activate,
+  });
+  if (error || !data) return { success: false, error: error?.message || 'Failed to create sanction policy version.' };
+  revalidatePath('/settings');
+  revalidatePath('/assessments');
+  return { success: true, data: data as SanctionPolicy, message: 'Sanction policy version created.' };
+}
+
+export async function toggleSanctionsAction(enabled: boolean): Promise<ActionResponse> {
+  const user = await getSessionUser();
+  if (!user || user.role !== 'admin') return { success: false, error: 'Only admins can enable or disable sanctions.' };
+  const orgId = await getEffectiveOrgId(user.organization_id);
+  const admin = createAdminClient();
+  const { error } = await admin.rpc('set_sanctions_enabled', {
+    p_organization_id: orgId,
+    p_enabled: enabled,
+  });
+  if (error) return { success: false, error: error.message };
+  revalidatePath('/settings');
+  revalidatePath('/assessments');
+  return { success: true, data: undefined, message: enabled ? 'Sanctions enabled.' : 'Sanctions disabled.' };
 }
 
 export async function updateAdminCredentialsAction(input: {

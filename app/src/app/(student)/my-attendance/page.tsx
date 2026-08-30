@@ -4,6 +4,13 @@ import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
 import { Calendar, Clock, CheckCircle2 } from 'lucide-react';
 
+interface AttendanceDetailRow {
+  id: string;
+  event_name: string;
+  recorded_at: string;
+  officer_name: string | null;
+}
+
 export default async function MyAttendancePage() {
   const user = await getSessionUser();
   if (!user || user.role !== 'student') redirect('/login');
@@ -55,7 +62,7 @@ export default async function MyAttendancePage() {
             No attendance recorded for your account yet.
           </div>
         ) : (
-          attendance.map((item: any) => {
+          (attendance as AttendanceDetailRow[]).map((item) => {
             const dt = new Date(item.recorded_at);
             const dateStr = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
             const timeStr = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });

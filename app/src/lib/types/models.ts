@@ -169,9 +169,35 @@ export interface AttendanceRecord {
   effective_scan_time: string;
   attendance_status: AttendanceStatus;
   late_penalty_percent: number;
+  earned_points_override: number | null;
   student?: Student;
   event?: Event;
   slot?: EventSlot;
+}
+
+export interface AttendanceRecordDetail extends Omit<AttendanceRecord, 'event' | 'slot'> {
+  event: Pick<Event, 'id' | 'name' | 'weight' | 'term_key'> & { slots: EventSlot[] };
+  slot: Pick<EventSlot, 'id' | 'label' | 'is_required'> | null;
+}
+
+export interface AttendanceCorrectionAudit {
+  id: string;
+  organization_id: string;
+  attendance_record_id: string;
+  student_id: string;
+  event_id: string;
+  action: 'update' | 'delete';
+  corrected_by: string;
+  reason: string;
+  before_snapshot: Record<string, unknown>;
+  after_snapshot: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface StudentAttendanceDetails {
+  student: Pick<Student, 'id' | 'full_name' | 'student_number'>;
+  records: AttendanceRecordDetail[];
+  corrections: AttendanceCorrectionAudit[];
 }
 
 export interface OrganizationSettings {
@@ -180,6 +206,7 @@ export interface OrganizationSettings {
   academic_year: string;
   semester: SemesterType;
   admin_username?: string;
+  sanctions_enabled?: boolean;
   updated_at: string;
 }
 

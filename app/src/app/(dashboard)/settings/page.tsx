@@ -1,28 +1,36 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { getSettingsDataAction } from '@/lib/actions/settings';
+import { RouteSkeleton } from '@/components/layout/route-skeleton';
 import { SettingsView } from './settings-view';
 
-export default async function SettingsPage() {
-  const res = await getSettingsDataAction();
+async function DeferredSettings({ promise }: { promise: ReturnType<typeof getSettingsDataAction> }) {
+  const res = await promise;
 
   if (!res.success) {
     return (
-      <div className="p-6 rounded-2xl bg-red-950/40 border border-red-800 text-red-300 text-sm">
+      <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-6 text-sm text-destructive">
         Failed to load settings: {res.error}
       </div>
     );
   }
 
+  return <SettingsView initialSettings={res.data.settings} initialOfficers={res.data.officers} initialActivePolicy={res.data.activePolicy} />;
+}
+
+export default function SettingsPage() {
+  const settingsPromise = getSettingsDataAction();
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">System Settings & Security</h1>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1">
+        <h1 className="text-xl font-bold text-foreground sm:text-2xl">System Settings & Security</h1>
+        <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
           Super-admin configuration, academic semester transitions, and authorized officer management.
         </p>
       </div>
-
-      <SettingsView initialSettings={res.data.settings} initialOfficers={res.data.officers} />
+      <Suspense fallback={<RouteSkeleton rows={6} />}>
+        <DeferredSettings promise={settingsPromise} />
+      </Suspense>
     </div>
   );
 }

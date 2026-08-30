@@ -114,4 +114,56 @@ describe('attendance persistence', () => {
 
     expect(result).toMatchObject({ success: false, code: 'DUPLICATE' });
   });
+
+  it('uses the original offline timestamp when calculating and persisting attendance', async () => {
+    const result = await recordScanAction({
+      student_uid: 'ST-2026-0001',
+      event_id: 'event-1',
+      slot_id: 'slot-1',
+      client_id: 'offline-1',
+      timestamp: '2026-08-22T08:10:00.000Z',
+    });
+
+    expect(result.success).toBe(true);
+    expect(mocks.attendanceInsert).toHaveBeenCalledWith(expect.objectContaining({
+      recorded_at: '2026-08-22T08:10:00.000Z',
+      effective_scan_time: '2026-08-22T08:10:00.000Z',
+      attendance_status: 'on_time',
+    }));
+  });
+
+  it('rejects an invalid offline timestamp without inserting attendance', async () => {
+    const result = await recordScanAction({
+      student_uid: 'ST-2026-0001',
+      event_id: 'event-1',
+      timestamp: 'not-a-date',
+    });
+
+    expect(result).toMatchObject({ success: false, code: 'INVALID_TIMESTAMP' });
+    expect(mocks.attendanceInsert).not.toHaveBeenCalled();
+  });
+
+  it('rejects an offline scan after the attendance window closes', async () => {
+    const result = await recordScanAction({
+      student_uid: 'ST-2026-0001',
+      event_id: 'event-1',
+      slot_id: 'slot-1',
+      timestamp: '2026-08-22T09:00:00.001Z',
+    });
+
+    expect(result).toMatchObject({ success: false, code: 'OUTSIDE_WINDOW' });
+    expect(mocks.attendanceInsert).not.toHaveBeenCalled();
+  });
+
+  it('rejects an offline scan before the attendance window opens', async () => {
+    const result = await recordScanAction({
+      student_uid: 'ST-2026-0001',
+      event_id: 'event-1',
+      slot_id: 'slot-1',
+      timestamp: '2026-08-22T07:59:59.999Z',
+    });
+
+    expect(result).toMatchObject({ success: false, code: 'OUTSIDE_WINDOW' });
+    expect(mocks.attendanceInsert).not.toHaveBeenCalled();
+  });
 });

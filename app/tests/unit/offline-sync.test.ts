@@ -68,4 +68,30 @@ describe('offline sync reconciliation', () => {
       failure: { retriable: true, code: 'SYNC_ERROR' },
     });
   });
+
+  it('completes a scan only once when the server repeats its result', () => {
+    const result = reconcileSyncResults([pending()], [
+      { client_id: 'scan-1', success: true },
+      { client_id: 'scan-1', success: true },
+    ]);
+
+    expect(result.completedClientIds).toEqual(['scan-1']);
+    expect(result.retained).toEqual([]);
+  });
+
+  it('retains a scan when a partial sync response omits its result', () => {
+    const result = reconcileSyncResults(
+      [pending(), pending({ client_id: 'scan-2' })],
+      [{ client_id: 'scan-1', success: true }],
+      '2026-08-22T09:00:00.000Z'
+    );
+
+    expect(result.completedClientIds).toEqual(['scan-1']);
+    expect(result.retained).toHaveLength(1);
+    expect(result.retained[0]).toMatchObject({
+      client_id: 'scan-2',
+      attempts: 1,
+      failure: { code: 'SYNC_ERROR', retriable: true },
+    });
+  });
 });

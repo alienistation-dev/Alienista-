@@ -10,6 +10,7 @@ export interface AssessmentAttendanceInput {
   slot_id: string | null;
   attendance_status: 'on_time' | 'late' | 'manual';
   late_penalty_percent: number;
+  earned_points_override?: number | null;
 }
 
 export interface AssessmentEventInput {
@@ -63,7 +64,8 @@ export function calculateStudentAssessment(
     const slots = effectiveSlots.map((slot) => {
       const attendance = event.attendance.find((record) => record.slot_id === slot.id);
       const penalty = attendance?.attendance_status === 'late' ? attendance.late_penalty_percent : 0;
-      const earned = attendance ? slotPoints * (1 - penalty / 100) : 0;
+      const normallyEarned = attendance ? slotPoints * (1 - penalty / 100) : 0;
+      const earned = attendance?.earned_points_override ?? normallyEarned;
       return {
         slot_id: slot.id,
         label: slot.label,

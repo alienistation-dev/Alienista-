@@ -16,18 +16,39 @@ function termKey(settings: { academic_year: string; semester: string }): string 
 async function resolveTerm(admin: ReturnType<typeof createAdminClient>, orgId: string, requestedTerm: string) {
   const { data, error } = await admin
     .from('organization_settings')
-    .select('academic_year, semester')
+    .select('academic_year, semester, sanctions_enabled')
     .eq('organization_id', orgId)
     .maybeSingle();
   if (error || !data) throw new Error('Organization term settings are unavailable.');
+  if (!data.sanctions_enabled) throw new Error('Sanctions are disabled in organization settings.');
   const currentTerm = termKey(data);
   if (requestedTerm !== currentTerm) throw new Error('The requested semester is not the active organization term.');
   return currentTerm;
 }
 
+async function requireSanctionsEnabled(admin: ReturnType<typeof createAdminClient>, orgId: string) {
+  const { data, error } = await admin
+    .from('organization_settings')
+    .select('sanctions_enabled')
+    .eq('organization_id', orgId)
+    .maybeSingle();
+  if (error || !data) throw new Error('Organization settings are unavailable.');
+  if (!data.sanctions_enabled) throw new Error('Sanctions are disabled in organization settings.');
+  const { data: policy, error: policyError } = await admin
+    .from('sanction_policies')
+    .select('id')
+    .eq('organization_id', orgId)
+    .eq('is_active', true)
+    .maybeSingle();
+  if (policyError || !policy) throw new Error('An active sanction policy is required.');
+  return policy.id as string;
+}
+
 async function loadPolicy(admin: ReturnType<typeof createAdminClient>, orgId: string, policyId?: string) {
   let query = admin.from('sanction_policies').select('*, sanction_tiers(*)').eq('organization_id', orgId);
-  query = policyId ? query.eq('id', policyId) : query.eq('is_active', true).order('version', { ascending: false }).limit(1);
+  query = policyId
+    ? query.eq('id', policyId).eq('is_active', true)
+    : query.eq('is_active', true).order('version', { ascending: false }).limit(1);
   const { data, error } = await query.maybeSingle();
   if (error || !data) throw new Error('Sanction policy not found for this organization.');
   const row = data as PolicyRow;
@@ -52,7 +73,7 @@ export async function calculateSemesterAssessment(
 
     const { data: events, error: eventsError } = await admin
       .from('events')
-      .select('id, name, weight, slots:event_slots(id, label, is_required), attendance:attendance_records(student_id, slot_id, attendance_status, late_penalty_percent)')
+      .select('id, name, weight, slots:event_slots(id, label, is_required), attendance:attendance_records(student_id, slot_id, attendance_status, late_penalty_percent, earned_points_override)')
       .eq('organization_id', orgId)
       .eq('term_key', term);
     if (eventsError) throw new Error(eventsError.message);
@@ -77,7 +98,7 @@ export async function calculateSemesterAssessment(
         slots: (event.slots || []).map((slot: { id: string; label: string; is_required: boolean }) => slot),
         attendance: (event.attendance || [])
           .filter((attendance: { student_id: string }) => attendance.student_id === student.id)
-          .map((attendance: { slot_id: string | null; attendance_status: 'on_time' | 'late' | 'manual'; late_penalty_percent: number }) => attendance),
+          .map((attendance: { slot_id: string | null; attendance_status: 'on_time' | 'late' | 'manual'; late_penalty_percent: number; earned_points_override: number | null }) => attendance),
       }));
       const calculated = calculateStudentAssessment(student.id, inputs, policy);
       const tier = selectSanctionTier(calculated.missed_points, calculated.attendance_ratio, policy);
@@ -117,10 +138,11 @@ export async function finalizeSemesterAssessment(assessmentId: string): Promise<
   try {
     const orgId = await getEffectiveOrgId(user.organization_id);
     const admin = createAdminClient();
+    const activePolicyId = await requireSanctionsEnabled(admin, orgId);
     const { data, error } = await admin
       .from('semester_assessments')
       .update({ status: 'finalized', finalized_at: new Date().toISOString(), finalized_by: user.id })
-      .eq('id', assessmentId).eq('organization_id', orgId).eq('status', 'draft')
+      .eq('id', assessmentId).eq('organization_id', orgId).eq('policy_id', activePolicyId).eq('status', 'draft')
       .select('*').maybeSingle();
     if (error) return { success: false, error: error.message };
     if (!data) return { success: false, error: 'Assessment is missing, outside your organization, or already finalized.' };

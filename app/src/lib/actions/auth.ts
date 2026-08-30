@@ -2,7 +2,7 @@
 
 import bcrypt from 'bcryptjs';
 import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
-import { setSessionCookie, clearSessionCookie, getSessionUser } from '@/lib/session';
+import { setSessionCookie, clearSessionCookie } from '@/lib/session';
 import { loginSchema, changePasswordSchema } from '@/lib/validations/auth';
 import { ActionResponse, SessionUser } from '@/lib/types/actions';
 import {

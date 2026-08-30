@@ -165,7 +165,7 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
       {/* Events List Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {events.length === 0 ? (
-          <div className="col-span-2 p-12 text-center text-xs text-slate-400 bg-white border border-[#E5EBE5] rounded-2xl">
+          <div className="col-span-2 rounded-2xl border border-[#E5EBE5] bg-white p-12 text-center text-xs text-muted-foreground">
             No events scheduled yet.
           </div>
         ) : (

@@ -401,7 +401,7 @@ export function ScannerView({ events, students, userRole, officerName, officerId
           {/* Prominent Scan Feedback Banner */}
           <div className="p-6 bg-white border border-[#E5EBE5] rounded-3xl flex flex-col items-center justify-center text-center min-h-[160px] shadow-xs">
             {!lastScan ? (
-              <div className="text-slate-400 text-xs flex flex-col items-center gap-2 font-medium">
+              <div className="flex flex-col items-center gap-2 text-xs font-medium text-muted-foreground">
                 <Camera className="w-8 h-8 opacity-40 text-[#2D6A4F]" />
                 <span>Ready to scan badge or enter student UID.</span>
               </div>
@@ -498,7 +498,7 @@ export function ScannerView({ events, students, userRole, officerName, officerId
 
             <div className="space-y-2 flex-1 max-h-48 overflow-y-auto pr-1">
               {recentScans.length === 0 ? (
-                <div className="text-xs text-slate-400 py-6 text-center">No scans recorded in this session yet.</div>
+                <div className="py-6 text-center text-xs text-muted-foreground">No scans recorded in this session yet.</div>
               ) : (
                 recentScans.map((sc, i) => (
                   <div key={i} className="p-2.5 rounded-xl bg-[#F8FAF9] border border-[#E5EBE5] flex items-center justify-between text-xs">
@@ -515,7 +515,7 @@ export function ScannerView({ events, students, userRole, officerName, officerId
                       >
                         {sc.status}
                       </span>
-                      <span className="text-[10px] text-slate-400 font-mono">{sc.time}</span>
+                      <span className="font-mono text-[10px] text-muted-foreground">{sc.time}</span>
                     </div>
                   </div>
                 ))

@@ -98,13 +98,13 @@ export function DeviceLogView({ organizationId }: { organizationId: string }) {
           <tbody className="divide-y divide-[#E5EBE5] text-slate-700">
             {loading ? (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-slate-400">
+                <td colSpan={6} className="py-8 text-center text-muted-foreground">
                   Loading on-device log...
                 </td>
               </tr>
             ) : logs.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-slate-400">
+                <td colSpan={6} className="py-8 text-center text-muted-foreground">
                   No local scan audit records found on this device.
                 </td>
               </tr>
@@ -119,7 +119,7 @@ export function DeviceLogView({ organizationId }: { organizationId: string }) {
                     <td className="py-3 px-4 font-bold text-slate-900">{l.student_name}</td>
                     <td className="py-3 px-4 text-slate-600">{l.event_name}</td>
                     <td className="py-3 px-4 text-slate-600">{l.officer}</td>
-                    <td className="py-3 px-4 text-slate-400 font-mono text-[11px]">{timeStr}</td>
+                    <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground">{timeStr}</td>
                     <td className="py-3 px-4 text-right">
                       <span
                         className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
