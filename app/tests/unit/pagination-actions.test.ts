@@ -91,6 +91,27 @@ describe('server-backed pagination actions', () => {
     expect(query.state.range).toEqual([16, 23]);
   });
 
+  it('applies badge year and status filters before paging', async () => {
+    const query = paginatedQuery([], 3);
+    mocks.from.mockReturnValue(query.builder);
+
+    await getBadgeStudentsAction({ page: 1, pageSize: 8, year: '4th Year', status: 'Inactive' });
+
+    expect(query.state.filters).toEqual(expect.arrayContaining([
+      ['year', '4th Year'],
+      ['status', 'Inactive'],
+    ]));
+  });
+
+  it('does not throw for malformed query input', async () => {
+    const query = paginatedQuery([], 0);
+    mocks.from.mockReturnValue(query.builder);
+
+    const result = await getStudentsAction({ query: 123 as unknown as string });
+
+    expect(result).toMatchObject({ success: true, data: { total: 0, page: 1, pageSize: 10 } });
+  });
+
   it('paginates student statistics after applying the year filter', async () => {
     const query = paginatedQuery([{ uid: 'ST-1', name: 'Ada', year: '4th Year', count: 3, attendance_pct: 75 }], 12);
     mocks.from.mockReturnValue(query.builder);

@@ -55,6 +55,22 @@ describe('sanctions settings actions', () => {
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
+  it('returns a validation response for a missing policy payload', async () => {
+    await expect(createSanctionPolicyVersionAction(undefined as never)).resolves.toEqual({
+      success: false,
+      error: 'Sanction policy input is required.',
+    });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('rejects non-boolean sanctions toggle input', async () => {
+    await expect(toggleSanctionsAction('true' as never)).resolves.toEqual({
+      success: false,
+      error: 'Sanctions toggle must be a boolean.',
+    });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
   it('creates and explicitly activates a new immutable policy version', async () => {
     const result = await createSanctionPolicyVersionAction(weightedPolicy);
 

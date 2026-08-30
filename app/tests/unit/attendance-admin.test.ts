@@ -66,6 +66,14 @@ describe('audited attendance administration', () => {
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
+  it('returns a validation response for a missing correction payload', async () => {
+    await expect(updateAttendanceRecordAction(undefined as never)).resolves.toEqual({
+      success: false,
+      error: 'Attendance correction input is required.',
+    });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
   it('passes the organization scope and normalized correction to the transactional RPC', async () => {
     const result = await updateAttendanceRecordAction({ ...validInput, reason: '  Corrected from paper log.  ' });
 
@@ -111,6 +119,14 @@ describe('audited attendance administration', () => {
       p_corrected_by: 'admin-1',
       p_reason: 'Duplicate paper entry.',
     });
+  });
+
+  it('returns a validation response for a missing delete payload', async () => {
+    await expect(deleteAttendanceRecordAction(undefined as never)).resolves.toEqual({
+      success: false,
+      error: 'Attendance deletion input is required.',
+    });
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
   it('loads organization-scoped attendance records and correction history', async () => {
