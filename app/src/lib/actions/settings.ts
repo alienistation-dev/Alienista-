@@ -22,7 +22,7 @@ export async function getSettingsDataAction(): Promise<
   const admin = createAdminClient();
 
   const [{ data: settings }, { data: officers }, { data: activePolicy }] = await withServerTiming('settings', () => Promise.all([
-    admin.from('organization_settings').select('id, organization_id, academic_year, semester, admin_username, sanctions_enabled, updated_at').eq('organization_id', orgId).maybeSingle(),
+    admin.from('organization_settings').select('id, organization_id, academic_year, semester, admin_username, sanctions_enabled, google_wallet_enabled, updated_at').eq('organization_id', orgId).maybeSingle(),
     admin.from('officers').select('id, organization_id, name, status, created_at, updated_at').eq('organization_id', orgId).order('name', { ascending: true }),
     admin.from('sanction_policies').select('*, sanction_tiers(*)').eq('organization_id', orgId).eq('is_active', true).order('version', { ascending: false }).limit(1).maybeSingle(),
   ]));
@@ -37,6 +37,7 @@ export async function getSettingsDataAction(): Promise<
         semester: 'First Semester',
         admin_username: 'admin',
         sanctions_enabled: false,
+        google_wallet_enabled: false,
         updated_at: new Date().toISOString(),
       },
       officers: (officers as Officer[]) || [],
@@ -292,4 +293,22 @@ export async function advanceSemesterAction(): Promise<ActionResponse<{ message:
     success: true,
     data: { message: `Started Academic Year ${nextAcademicYear} (First Semester). Students promoted successfully!` },
   };
+}
+
+export async function toggleGoogleWalletAction(enabled: boolean): Promise<ActionResponse> {
+  const user = await getSessionUser();
+  if (!user || user.role !== 'admin') return { success: false, error: 'Unauthorized.' };
+
+  const orgId = await getEffectiveOrgId(user.organization_id);
+  const admin = createAdminClient();
+
+  const { error } = await admin
+    .from('organization_settings')
+    .update({ google_wallet_enabled: enabled, updated_at: new Date().toISOString() })
+    .eq('organization_id', orgId);
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath('/settings');
+  revalidatePath('/my-qr');
+  return { success: true, data: undefined, message: `Google Wallet passes ${enabled ? 'enabled' : 'disabled'}.` };
 }

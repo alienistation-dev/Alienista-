@@ -207,6 +207,7 @@ export interface OrganizationSettings {
   semester: SemesterType;
   admin_username?: string;
   sanctions_enabled?: boolean;
+  google_wallet_enabled?: boolean;
   updated_at: string;
 }
 
