@@ -23,7 +23,7 @@ describe('BadgeCard UI', () => {
       walletSaveUrl: 'https://pay.google.com/gp/v/save/test-jwt',
     });
     const html = renderToString(element);
-    expect(html).toContain('Save to Google Wallet');
+    expect(html).toContain('Add to Google Wallet');
     expect(html).toContain('href="https://pay.google.com/gp/v/save/test-jwt"');
   });
 
@@ -34,7 +34,7 @@ describe('BadgeCard UI', () => {
       showWalletButton: false,
     });
     const html = renderToString(element);
-    expect(html).not.toContain('Save to Google Wallet');
+    expect(html).not.toContain('Add to Google Wallet');
   });
 
   it('renders Google Wallet button when showWalletButton is true even without precomputed walletSaveUrl', () => {
@@ -44,7 +44,7 @@ describe('BadgeCard UI', () => {
       showWalletButton: true,
     });
     const html = renderToString(element);
-    expect(html).toContain('Save to Google Wallet');
+    expect(html).toContain('Add to Google Wallet');
     expect(html).toContain('<button');
   });
 });

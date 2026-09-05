@@ -6,6 +6,17 @@ import { buildBadgeData, buildBadgeFilename } from '@/lib/badges/badge';
 import type { BadgeStudent } from '@/lib/types/models';
 import { getStudentGoogleWalletUrlAction } from '@/lib/actions/google-wallet';
 
+function GoogleWalletEmblem() {
+  return (
+    <svg className="w-6 h-5 shrink-0" viewBox="0 0 36 30" fill="none" aria-hidden="true">
+      <path d="M36 11.291H0V5.6456C0 2.5809 2.6422 0 5.7798 0H30.2202C33.3578 0 36 2.5809 36 5.6456V11.291Z" fill="#34A853" />
+      <path d="M36 16.5H0V10.5C0 7.2429 2.6422 4.5 5.7798 4.5H30.2202C33.3578 4.5 36 7.2429 36 10.5V16.5Z" fill="#FBBC04" />
+      <path d="M36 21.5H0V15.5C0 12.2429 2.6422 9.5 5.7798 9.5H30.2202C33.3578 9.5 36 12.2429 36 15.5V21.5Z" fill="#EA4335" />
+      <path d="M0 12.7409L22.8493 17.9025C25.4795 18.5477 28.4384 17.9025 30.5753 16.2895L36 12.4183V24.5157C36 27.5804 33.3699 30 30.2466 30H5.7534C2.6301 30 0 27.5804 0 24.5157V12.7409Z" fill="#4285F4" />
+    </svg>
+  );
+}
+
 export function BadgeCard({
   student,
   showDownload = true,
@@ -98,13 +109,11 @@ export function BadgeCard({
               href={walletSaveUrl}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Save to Google Wallet"
-              className="w-full py-2.5 bg-black hover:bg-neutral-800 text-white font-bold rounded-lg text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
+              aria-label="Add to Google Wallet"
+              className="w-full h-12 bg-[#1F1F1F] hover:bg-[#2F2F2F] active:bg-[#000000] text-white font-medium rounded-full text-xs sm:text-sm flex items-center justify-center gap-3 transition-all shadow-sm border border-black/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1F1F1F]"
             >
-              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
-              </svg>
-              <span>Save to Google Wallet</span>
+              <GoogleWalletEmblem />
+              <span>Add to Google Wallet</span>
             </a>
           ) : shouldShowWallet ? (
             <div>
@@ -112,20 +121,18 @@ export function BadgeCard({
                 type="button"
                 onClick={handleDynamicWalletClick}
                 disabled={isPending}
-                aria-label="Save to Google Wallet"
-                className="w-full py-2.5 bg-black hover:bg-neutral-800 text-white font-bold rounded-lg text-xs flex items-center justify-center gap-2 transition-colors shadow-xs disabled:opacity-60 cursor-pointer"
+                aria-label="Add to Google Wallet"
+                className="w-full h-12 bg-[#1F1F1F] hover:bg-[#2F2F2F] active:bg-[#000000] text-white font-medium rounded-full text-xs sm:text-sm flex items-center justify-center gap-3 transition-all shadow-sm border border-black/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1F1F1F] disabled:opacity-60 cursor-pointer"
               >
                 {isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                  <Loader2 className="w-5 h-5 animate-spin shrink-0 text-white" />
                 ) : (
-                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
-                  </svg>
+                  <GoogleWalletEmblem />
                 )}
-                <span>{isPending ? 'Generating pass...' : 'Save to Google Wallet'}</span>
+                <span>{isPending ? 'Adding to Google Wallet...' : 'Add to Google Wallet'}</span>
               </button>
               {errorMessage && (
-                <p className="mt-1.5 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-2.5 py-1 text-center">
+                <p className="mt-2 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 text-center">
                   {errorMessage}
                 </p>
               )}
