@@ -45,7 +45,11 @@ export default async function MyQrPage() {
         <p className="text-xs text-slate-500 mt-1">Present this QR code to the officer during event attendance.</p>
       </div>
 
-      <BadgeCard student={student as Student} walletSaveUrl={walletUrl} />
+      <BadgeCard
+        student={student as Student}
+        walletSaveUrl={walletUrl}
+        showWalletButton={isWalletEnabled}
+      />
     </div>
   );
 }

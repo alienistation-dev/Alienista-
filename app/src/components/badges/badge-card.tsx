@@ -1,22 +1,27 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { Download } from 'lucide-react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
+import { Download, Loader2 } from 'lucide-react';
 import { buildBadgeData, buildBadgeFilename } from '@/lib/badges/badge';
 import type { BadgeStudent } from '@/lib/types/models';
+import { getStudentGoogleWalletUrlAction } from '@/lib/actions/google-wallet';
 
 export function BadgeCard({
   student,
   showDownload = true,
   walletSaveUrl = null,
+  showWalletButton = false,
 }: {
   student: BadgeStudent;
   showDownload?: boolean;
   walletSaveUrl?: string | null;
+  showWalletButton?: boolean;
 }) {
   const badge = useMemo(() => buildBadgeData(student), [student]);
   const [badgeDataUrl, setBadgeDataUrl] = useState('');
   const [renderError, setRenderError] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -40,6 +45,28 @@ export function BadgeCard({
     link.click();
   };
 
+  const handleDynamicWalletClick = () => {
+    setErrorMessage(null);
+    startTransition(async () => {
+      try {
+        const res = await getStudentGoogleWalletUrlAction(student.id);
+        if (res.success) {
+          if (res.data?.url) {
+            window.open(res.data.url, '_blank', 'noopener,noreferrer');
+          } else {
+            setErrorMessage('Google Wallet pass URL was not returned.');
+          }
+        } else {
+          setErrorMessage(res.error || 'Failed to generate Google Wallet pass.');
+        }
+      } catch {
+        setErrorMessage('Unable to generate pass. Please check your network or server configuration.');
+      }
+    });
+  };
+
+  const shouldShowWallet = Boolean(walletSaveUrl || showWalletButton);
+
   return (
     <div className="bg-white border border-[#E5EBE5] rounded-lg overflow-hidden shadow-md max-w-sm mx-auto">
       <div className="aspect-[5/8] bg-[#F8FAF9] flex items-center justify-center">
@@ -53,20 +80,20 @@ export function BadgeCard({
         )}
       </div>
 
-      {(showDownload || walletSaveUrl) && (
+      {(showDownload || shouldShowWallet) && (
         <div className="p-3 bg-[#F8FAF9] border-t border-[#E5EBE5] space-y-2">
           {showDownload && (
             <button
               onClick={handleDownload}
               disabled={!badgeDataUrl}
-              className="w-full py-2.5 bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold rounded-lg text-xs flex items-center justify-center gap-2 transition-colors shadow-xs disabled:opacity-40"
+              className="w-full py-2.5 bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold rounded-lg text-xs flex items-center justify-center gap-2 transition-colors shadow-xs disabled:opacity-40 cursor-pointer"
             >
               <Download className="w-4 h-4" />
               <span>Download Badge PNG</span>
             </button>
           )}
 
-          {walletSaveUrl && (
+          {walletSaveUrl ? (
             <a
               href={walletSaveUrl}
               target="_blank"
@@ -74,12 +101,36 @@ export function BadgeCard({
               aria-label="Save to Google Wallet"
               className="w-full py-2.5 bg-black hover:bg-neutral-800 text-white font-bold rounded-lg text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
             >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
               </svg>
               <span>Save to Google Wallet</span>
             </a>
-          )}
+          ) : shouldShowWallet ? (
+            <div>
+              <button
+                type="button"
+                onClick={handleDynamicWalletClick}
+                disabled={isPending}
+                aria-label="Save to Google Wallet"
+                className="w-full py-2.5 bg-black hover:bg-neutral-800 text-white font-bold rounded-lg text-xs flex items-center justify-center gap-2 transition-colors shadow-xs disabled:opacity-60 cursor-pointer"
+              >
+                {isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                ) : (
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
+                  </svg>
+                )}
+                <span>{isPending ? 'Generating pass...' : 'Save to Google Wallet'}</span>
+              </button>
+              {errorMessage && (
+                <p className="mt-1.5 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-2.5 py-1 text-center">
+                  {errorMessage}
+                </p>
+              )}
+            </div>
+          ) : null}
         </div>
       )}
     </div>

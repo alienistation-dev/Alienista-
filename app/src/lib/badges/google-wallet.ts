@@ -85,7 +85,7 @@ export function generateGoogleWalletSaveUrl(student: Student): string | null {
   const classId = process.env.GOOGLE_WALLET_CLASS_ID;
   const clientEmail = process.env.GOOGLE_WALLET_CLIENT_EMAIL;
   const privateKey = process.env.GOOGLE_WALLET_PRIVATE_KEY;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
   if (!issuerId || !classId || !clientEmail || !privateKey) return null;
 

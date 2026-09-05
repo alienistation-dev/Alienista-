@@ -27,12 +27,24 @@ describe('BadgeCard UI', () => {
     expect(html).toContain('href="https://pay.google.com/gp/v/save/test-jwt"');
   });
 
-  it('does not render Google Wallet button when walletSaveUrl is null or omitted', () => {
+  it('does not render Google Wallet button when walletSaveUrl is null and showWalletButton is false', () => {
     const element = React.createElement(BadgeCard, {
       student,
       walletSaveUrl: null,
+      showWalletButton: false,
     });
     const html = renderToString(element);
     expect(html).not.toContain('Save to Google Wallet');
+  });
+
+  it('renders Google Wallet button when showWalletButton is true even without precomputed walletSaveUrl', () => {
+    const element = React.createElement(BadgeCard, {
+      student,
+      walletSaveUrl: null,
+      showWalletButton: true,
+    });
+    const html = renderToString(element);
+    expect(html).toContain('Save to Google Wallet');
+    expect(html).toContain('<button');
   });
 });
