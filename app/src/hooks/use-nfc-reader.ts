@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 export interface NdefRecordLike {
   recordType: string;
-  data?: ArrayBuffer | DataView;
+  data?: ArrayBuffer | DataView | Uint8Array | ArrayBufferView;
 }
 
 export function parseNfcRecordPayload(record: NdefRecordLike): string | null {
@@ -28,6 +28,12 @@ export function parseNfcRecordPayload(record: NdefRecordLike): string | null {
   }
 }
 
+interface NdefReaderInstance {
+  scan: () => Promise<void>;
+  onreading: ((event: { message: { records: NdefRecordLike[] } }) => void) | null;
+  onreadingerror: (() => void) | null;
+}
+
 export function useNfcReader({
   onScan,
   enabled = true,
@@ -46,13 +52,12 @@ export function useNfcReader({
   const startScan = useCallback(async () => {
     if (!isSupported || !enabled) return;
     try {
-      // @ts-expect-error Web NFC API type declaration
-      const ndef = new window.NDEFReader();
+      const NdefReaderConstructor = (window as unknown as { NDEFReader: new () => NdefReaderInstance }).NDEFReader;
+      const ndef = new NdefReaderConstructor();
       await ndef.scan();
       setIsListening(true);
       setError(null);
 
-      // @ts-expect-error Web NFC reading event
       ndef.onreading = (event: { message: { records: NdefRecordLike[] } }) => {
         for (const record of event.message.records) {
           const uid = parseNfcRecordPayload(record);
@@ -63,7 +68,6 @@ export function useNfcReader({
         }
       };
 
-      // @ts-expect-error Web NFC reading error event
       ndef.onreadingerror = () => {
         setError('NFC read error. Please tap again.');
       };

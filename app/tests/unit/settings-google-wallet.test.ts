@@ -10,7 +10,16 @@ vi.mock('@/lib/supabase/admin', () => ({
 }));
 
 vi.mock('@/lib/session', () => ({
-  getSessionUser: vi.fn().mockResolvedValue({ id: 'admin-1', role: 'admin', organization_id: 'org-123' }),
+  getSessionUser: vi.fn().mockResolvedValue({
+    id: 'admin-1',
+    subject_id: 'admin-1',
+    subject_type: 'officer',
+    name: 'Admin',
+    role: 'admin',
+    organization_id: 'org-123',
+    issued_at: 0,
+    expires_at: 0,
+  }),
 }));
 
 vi.mock('next/cache', () => ({
@@ -35,10 +44,21 @@ describe('toggleGoogleWalletAction', () => {
 
   it('rejects non-admin roles', async () => {
     const { getSessionUser } = await import('@/lib/session');
-    vi.mocked(getSessionUser).mockResolvedValueOnce({ id: 'student-1', role: 'student', organization_id: 'org-123' });
+    vi.mocked(getSessionUser).mockResolvedValueOnce({
+      id: 'student-1',
+      subject_id: 'student-1',
+      subject_type: 'student',
+      name: 'Student',
+      role: 'student',
+      organization_id: 'org-123',
+      issued_at: 0,
+      expires_at: 0,
+    });
 
     const res = await toggleGoogleWalletAction(true);
     expect(res.success).toBe(false);
-    expect(res.error).toMatch(/unauthorized/i);
+    if (!res.success) {
+      expect(res.error).toMatch(/unauthorized/i);
+    }
   });
 });

@@ -1038,7 +1038,116 @@ git commit -m "feat: add global sanctions toggle in settings with assessment gua
 
 ---
 
-## Task 9: TypeScript & Lint Verification
+---
+
+## Task 9: Google Wallet Student Badge & Extensible Tap-to-Log Attendance
+
+**Priority:** P1
+**Context:** Enable students to save their membership badge into Google Wallet as a Generic Pass. Attendance scanning remains 100% optical camera QR (scanning phone screens or paper), with an extensible Web NFC door provided for compatible Android PWAs. An admin toggle in Settings enables/disables the feature with a single non-breaking column addition.
+
+### Preparatory Google Wallet Console Setup (Issuer: `3388000000023183187`)
+
+1. **Authorize Service Account (Crucial):**
+   * Under [Google Pay & Wallet Console](https://pay.google.com/business/console) > **Google Wallet API > Users / Service Accounts**, invite your GCP service account (e.g. `wallet-dev@...iam.gserviceaccount.com`) as **Developer** or **Admin**.
+2. **Provision Generic Pass Class (`/generic/create`):**
+   * Direct Link: `https://pay.google.com/business/console/passes/BCR2DN6DVLZMZF25/issuer/3388000000023183187/generic/create`
+   * Fill out the form fields section-by-section:
+      | Form Section & Field | Exact Value to Enter / Select | Notes / Rationale |
+      | :--- | :--- | :--- |
+      | **General > Class ID \*** | `student_badge_dev` | Console prefixes with `3388000000023183187.` Full ID: `3388000000023183187.student_badge_dev` |
+      | **General > Multiple devices and holders allowed status** | `One user, multiple devices` (`ONE_USER_ALL_DEVICES`) | Allows student's phone & smartwatch, prevents unauthorized sharing across accounts |
+      | **Image Modules > Image Module 1 > Image URL** | *Leave Blank* | Dynamic student avatar is injected dynamically in the Next.js pass object |
+      | **Text Modules > Text Module 1 > Header & Body** | *Leave Blank* | Student Number, Section, and Status are injected dynamically per student by the app |
+      | **Link Modules > Link Module 1 > Link Label** | `Alienista Portal` | Clickable label on pass details in Google Wallet |
+      | **Link Modules > Link Module 1 > Link URL** | `https://alienista.vercel.app` (or dev URL) | URL opened when clicking the link |
+      | **Smart Tap Settings > Enable Smart Tap?** | **NO / Unchecked** | Alienista uses optical camera QR scanning; Smart Tap requires dedicated merchant terminals |
+      | **Redemption Issuers** | *Leave Blank* | N/A (retail loyalty only) |
+      | **Callback Settings > Callback URL & Update request URL** | *Leave Blank* | N/A (our signed JWT flow is completely stateless) |
+3. **Configure Demo Allowlist:**
+   * Under **Google Wallet API > Test accounts**, add `lesleyvancepaxley@gmail.com` and `lawsmagnet6@gmail.com` (Netorare) to allow pass saving during Demo Mode.
+
+**Files:**
+- Create: `supabase/migrations/20260905000000_google_wallet_settings.sql`
+- Create: `app/src/lib/badges/google-wallet.ts`
+- Create: `app/src/lib/actions/google-wallet.ts`
+- Create: `app/src/hooks/use-nfc-reader.ts`
+- Modify: `app/src/lib/types/models.ts`
+- Modify: `app/src/lib/actions/settings.ts`
+- Modify: `app/src/components/badges/badge-card.tsx`
+- Modify: `app/src/app/(student)/my-qr/page.tsx`
+- Modify: `app/src/app/(dashboard)/settings/settings-view.tsx`
+- Modify: `app/src/app/(dashboard)/students/student-table.tsx`
+- Modify: `app/src/app/(dashboard)/scanner/scanner-view.tsx`
+- Test: `app/tests/unit/google-wallet.test.ts`
+- Test: `app/tests/unit/settings-google-wallet.test.ts`
+- Test: `app/tests/unit/badge-wallet-ui.test.ts`
+- Test: `app/tests/unit/nfc-reader.test.ts`
+
+**Interfaces:**
+- Consumes: `Student`, `createAdminClient()`, `getEffectiveOrgId()`, `node:crypto`
+- Produces: `generateGoogleWalletSaveUrl(student)`, `toggleGoogleWalletAction(enabled)`, `useNfcReader({ onScan })`
+
+- [ ] **Step 1: Create minimal migration and settings toggle**
+
+Create `supabase/migrations/20260905000000_google_wallet_settings.sql`:
+```sql
+ALTER TABLE public.organization_settings
+  ADD COLUMN IF NOT EXISTS google_wallet_enabled BOOLEAN NOT NULL DEFAULT false;
+```
+Update `OrganizationSettings` in `app/src/lib/types/models.ts` to include `google_wallet_enabled?: boolean`.
+In `app/src/lib/actions/settings.ts`, export `toggleGoogleWalletAction(enabled: boolean)`.
+
+- [ ] **Step 2: Implement pure `node:crypto` pass minting**
+
+Create `app/src/lib/badges/google-wallet.ts`:
+- Build generic object embedding `student.uid` in `barcode: { type: 'QR_CODE', value: student.uid }`.
+- Sign JWT with RS256 via `node:crypto` using `GOOGLE_WALLET_PRIVATE_KEY`.
+- Return `https://pay.google.com/gp/v/save/<jwt>`.
+
+Create server action `app/src/lib/actions/google-wallet.ts`:
+- Export `getStudentGoogleWalletUrlAction(studentId?: string)`.
+
+- [ ] **Step 3: Add "Save to Google Wallet" button to student badge UI**
+
+In `app/src/components/badges/badge-card.tsx`:
+- Add optional `walletSaveUrl?: string | null` prop.
+- Render Google Wallet button below "Download Badge PNG".
+
+In `app/src/app/(student)/my-qr/page.tsx`:
+- Pass `walletUrl` when `google_wallet_enabled` is true and env credentials exist.
+
+In `app/src/app/(dashboard)/students/student-table.tsx`:
+- Add a "Wallet Pass" preview link in student actions for admins.
+
+- [ ] **Step 4: Add Google Wallet switch to Admin Settings UI**
+
+In `app/src/app/(dashboard)/settings/settings-view.tsx`:
+- Add an interactive toggle switch calling `toggleGoogleWalletAction`.
+
+- [ ] **Step 5: Add extensible Web NFC hook for PWA tap-to-log**
+
+Create `app/src/hooks/use-nfc-reader.ts`:
+- Check for `window.NDEFReader`.
+- Extract `student_uid` from text or URI records.
+
+In `app/src/app/(dashboard)/scanner/scanner-view.tsx`:
+- Mount `useNfcReader` with `onScan: handleDecodedText` while keeping camera scanner active.
+
+- [ ] **Step 6: Write unit tests and verify**
+
+Run: `cd app && npx vitest run tests/unit/google-wallet.test.ts tests/unit/settings-google-wallet.test.ts tests/unit/badge-wallet-ui.test.ts tests/unit/nfc-reader.test.ts -v`
+All tests must pass.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add -A
+git commit -m "feat: add Google Wallet student pass with admin toggle and extensible NFC hook"
+```
+
+---
+
+## Task 10: TypeScript & Lint Verification
 
 **Priority:** P0 — Must pass before any PR
 
@@ -1087,9 +1196,11 @@ Tasks can be worked on in this order for optimal dependency flow:
 6. **Task 5** (Pagination) — medium feature
 7. **Task 3** (Attendance edit) — medium feature, needs UI work
 8. **Task 8** (Sanctions toggle) — medium feature, needs migration + UI
-9. **Task 9** (Final verification) — always last
+9. **Task 9** (Google Wallet & NFC) — pass minting, admin switch, NFC hook
+10. **Task 10** (Final verification) — always last
 
 Tasks 2, 6 are independent and can run in parallel.
 Tasks 3, 4, 5 are independent and can run in parallel after Task 1.
-Task 8 depends on nothing but should be done after Task 1 (to verify the toggle UI).
-Task 9 must be last.
+Task 8 and Task 9 depend on nothing but should be done after Task 1 (to verify the toggle UI).
+Task 10 must be last.
+
