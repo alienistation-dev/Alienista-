@@ -3,6 +3,7 @@ import { getSessionUser } from '@/lib/session';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { BadgeCard } from '@/components/badges/badge-card';
 import { Student } from '@/lib/types/models';
+import { generateGoogleWalletSaveUrl } from '@/lib/badges/google-wallet';
 import { redirect } from 'next/navigation';
 
 export default async function MyQrPage() {
@@ -10,11 +11,18 @@ export default async function MyQrPage() {
   if (!user || user.role !== 'student') redirect('/login');
 
   const admin = createAdminClient();
-  const { data: student } = await admin
-    .from('students')
-    .select('*')
-    .eq('id', user.id)
-    .maybeSingle();
+  const [{ data: student }, { data: settings }] = await Promise.all([
+    admin
+      .from('students')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle(),
+    admin
+      .from('organization_settings')
+      .select('google_wallet_enabled')
+      .eq('organization_id', user.organization_id)
+      .maybeSingle(),
+  ]);
 
   if (!student) {
     return (
@@ -24,6 +32,12 @@ export default async function MyQrPage() {
     );
   }
 
+  const isWalletEnabled =
+    process.env.NEXT_PUBLIC_ENABLE_GOOGLE_WALLET !== 'false' &&
+    Boolean(settings?.google_wallet_enabled);
+
+  const walletUrl = isWalletEnabled ? generateGoogleWalletSaveUrl(student as Student) : null;
+
   return (
     <div className="space-y-6 text-center">
       <div>
@@ -31,7 +45,7 @@ export default async function MyQrPage() {
         <p className="text-xs text-slate-500 mt-1">Present this QR code to the officer during event attendance.</p>
       </div>
 
-      <BadgeCard student={student as Student} />
+      <BadgeCard student={student as Student} walletSaveUrl={walletUrl} />
     </div>
   );
 }

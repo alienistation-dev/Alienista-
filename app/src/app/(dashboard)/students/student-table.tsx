@@ -28,7 +28,9 @@ import {
   Camera,
   Info,
   ClipboardCheck,
+  Wallet,
 } from 'lucide-react';
+import { getStudentGoogleWalletUrlAction } from '@/lib/actions/google-wallet';
 
 interface StudentTableProps {
   initialPage: PaginatedResult<Student>;
@@ -261,6 +263,17 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
     });
   };
 
+  const handleOpenWalletPass = (st: Student) => {
+    startTransition(async () => {
+      const res = await getStudentGoogleWalletUrlAction(st.id);
+      if (!res.success) {
+        showToast(res.error, 'err');
+        return;
+      }
+      window.open(res.data.url, '_blank', 'noopener,noreferrer');
+    });
+  };
+
   const handleExportCsv = () => {
     startTransition(async () => {
       try {
@@ -488,6 +501,13 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
                   {userRole === 'admin' && (
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => handleOpenWalletPass(st)}
+                          title="Preview Google Wallet Pass"
+                          className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-[#EBF5EE] hover:text-[#2D6A4F]"
+                        >
+                          <Wallet className="h-3.5 w-3.5" />
+                        </button>
                         <button
                           onClick={() => setAttendanceStudent(st)}
                           title="Manage Attendance"
