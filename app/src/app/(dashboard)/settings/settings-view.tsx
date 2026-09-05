@@ -8,8 +8,9 @@ import {
   deleteOfficerAction,
   advanceSemesterAction,
   updateAdminCredentialsAction,
+  toggleGoogleWalletAction,
 } from '@/lib/actions/settings';
-import { Settings, Shield, UserCheck, Plus, Trash2, KeyRound, ArrowRight, Save, AlertTriangle } from 'lucide-react';
+import { Settings, Shield, UserCheck, Plus, Trash2, KeyRound, ArrowRight, Save, AlertTriangle, Wallet } from 'lucide-react';
 import { SanctionsPolicyEditor } from './sanctions-policy-editor';
 
 export function SettingsView({
@@ -41,9 +42,25 @@ export function SettingsView({
   const [newAdminUsername, setNewAdminUsername] = useState(settings.admin_username || 'admin');
   const [newAdminPassword, setNewAdminPassword] = useState('');
 
+  const [googleWalletEnabled, setGoogleWalletEnabled] = useState(Boolean(initialSettings.google_wallet_enabled));
+
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
+  };
+
+  const handleToggleGoogleWallet = () => {
+    startTransition(async () => {
+      const next = !googleWalletEnabled;
+      setGoogleWalletEnabled(next);
+      const res = await toggleGoogleWalletAction(next);
+      if (!res.success) {
+        setGoogleWalletEnabled(!next);
+        showToast(res.error, 'err');
+      } else {
+        showToast(res.message || `Google Wallet passes ${next ? 'enabled' : 'disabled'}.`);
+      }
+    });
   };
 
   const handleUpdateAdminCreds = (e: React.FormEvent) => {
@@ -247,6 +264,46 @@ export function SettingsView({
         initialEnabled={Boolean(settings.sanctions_enabled)}
         initialPolicy={initialActivePolicy}
       />
+
+      {/* Google Wallet Passes Card */}
+      <div className="p-6 bg-white border border-[#E5EBE5] rounded-3xl shadow-xs space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Wallet className="w-4 h-4 text-[#2D6A4F]" />
+              <span>Google Wallet Passes</span>
+            </h3>
+            <p className="text-xs text-slate-500">
+              Allow students to save their membership badge directly into Google Wallet.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            role="switch"
+            aria-checked={googleWalletEnabled}
+            onClick={handleToggleGoogleWallet}
+            disabled={isPending}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+              googleWalletEnabled ? 'bg-[#2D6A4F]' : 'bg-slate-200'
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                googleWalletEnabled ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-[#F8FAF9] border border-[#E5EBE5] text-xs text-slate-600 space-y-1">
+          <p className="font-semibold text-slate-800">How it works:</p>
+          <ul className="list-disc list-inside space-y-0.5 text-slate-500">
+            <li>When enabled, students will see a &quot;Save to Google Wallet&quot; button on their badge page.</li>
+            <li>Passes display student details and a scannable QR code compatible with officer attendance cameras.</li>
+          </ul>
+        </div>
+      </div>
 
       {/* Officer Roster & Access Control */}
       <div className="p-6 bg-white border border-[#E5EBE5] rounded-3xl shadow-xs space-y-5">
