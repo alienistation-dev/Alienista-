@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Html5Qrcode, Html5QrcodeScannerState } from 'html5-qrcode';
+import type { Html5Qrcode } from 'html5-qrcode';
 import { Camera, AlertCircle } from 'lucide-react';
 
 interface QrScannerProps {
@@ -41,17 +41,17 @@ export function QrScannerComponent({ onScan, facingMode = 'environment', active 
     if (!active) {
       if (scannerRef.current) {
         const state = scannerRef.current.getState();
-        if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
+        if (state === 2 || state === 3) {
           scannerRef.current.stop().catch(() => {});
         }
         try { scannerRef.current.clear(); } catch {}
         scannerRef.current = null;
       }
-      setErrorMessage(null);
+      queueMicrotask(() => setErrorMessage(null));
       return;
     }
 
-    setErrorMessage(null);
+    queueMicrotask(() => setErrorMessage(null));
 
     // Small delay to ensure DOM container is ready after React render
     const initTimeout = setTimeout(async () => {
@@ -61,7 +61,7 @@ export function QrScannerComponent({ onScan, facingMode = 'environment', active 
       if (scannerRef.current) {
         try {
           const state = scannerRef.current.getState();
-          if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
+          if (state === 2 || state === 3) {
             await scannerRef.current.stop();
           }
           try { scannerRef.current.clear(); } catch {}
@@ -69,6 +69,7 @@ export function QrScannerComponent({ onScan, facingMode = 'environment', active 
         scannerRef.current = null;
       }
 
+      const { Html5Qrcode } = await import('html5-qrcode');
       const scanner = new Html5Qrcode(containerId, { verbose: false });
       scannerRef.current = scanner;
 
@@ -127,8 +128,9 @@ export function QrScannerComponent({ onScan, facingMode = 'environment', active 
             errorCallback
           );
         }
-      } catch (err: any) {
-        console.warn('Primary camera start failed, trying facingMode fallback:', err?.message);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Unknown camera error';
+        console.warn('Primary camera start failed, trying facingMode fallback:', message);
         // Fallback: try with just facingMode (no exact constraint)
         try {
           if (!isMounted || !scannerRef.current) return;
@@ -138,8 +140,9 @@ export function QrScannerComponent({ onScan, facingMode = 'environment', active 
             successCallback,
             errorCallback
           );
-        } catch (fallbackErr: any) {
-          console.warn('Facingmode fallback failed, trying any video input:', fallbackErr?.message);
+        } catch (fallbackErr: unknown) {
+          const fallbackMessage = fallbackErr instanceof Error ? fallbackErr.message : 'Unknown camera error';
+          console.warn('Facingmode fallback failed, trying any video input:', fallbackMessage);
           // Last resort: try with just { facingMode: 'user' }
           try {
             if (!isMounted || !scannerRef.current) return;
@@ -149,11 +152,9 @@ export function QrScannerComponent({ onScan, facingMode = 'environment', active 
               successCallback,
               errorCallback
             );
-          } catch (lastErr: any) {
+          } catch (lastErr: unknown) {
             if (isMounted) {
-              setErrorMessage(
-                lastErr?.message || 'Could not access camera. Please allow camera permissions in your browser settings and reload.'
-              );
+              setErrorMessage(lastErr instanceof Error ? lastErr.message : 'Could not access camera. Please allow camera permissions in your browser settings and reload.');
             }
           }
         }
@@ -167,7 +168,7 @@ export function QrScannerComponent({ onScan, facingMode = 'environment', active 
         const sc = scannerRef.current;
         try {
           const state = sc.getState();
-          if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
+          if (state === 2 || state === 3) {
             sc.stop().then(() => { try { sc.clear(); } catch {} }).catch(() => {});
           } else {
             try { sc.clear(); } catch {}

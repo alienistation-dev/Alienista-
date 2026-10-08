@@ -3,25 +3,104 @@
 import bcrypt from 'bcryptjs';
 import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/session';
-import { ActionResponse } from '@/lib/types/actions';
-import { Student } from '@/lib/types/models';
+import { ActionResponse, PageRequest, PaginatedResult } from '@/lib/types/actions';
+import { BadgeStudent, MemberStatus, ScannerStudent, Student, YearLevel } from '@/lib/types/models';
 import { studentSchema } from '@/lib/validations/students';
 import { revalidatePath } from 'next/cache';
+import { allocateStudentUid } from '@/lib/students/uid';
+import { withServerTiming } from '@/lib/server-timing';
+import { normalizePageRequest, pageRange } from '@/lib/pagination';
+import { syncGoogleWalletObject } from '@/lib/badges/google-wallet';
+import type { GoogleWalletDesign } from '@/lib/types/models';
 
-export async function getStudentsAction(): Promise<ActionResponse<Student[]>> {
+const STUDENT_PROJECTION = 'id, organization_id, uid, student_number, first_name, last_name, full_name, course, year, section, status, is_first_login, avatar_url, created_at, updated_at';
+
+async function getWalletDesign(admin: ReturnType<typeof createAdminClient>, orgId: string): Promise<GoogleWalletDesign> {
+  const { data } = await admin.from('organization_settings').select('google_wallet_design').eq('organization_id', orgId).maybeSingle();
+  return data?.google_wallet_design === 'legacy' ? 'legacy' : 'builder';
+}
+
+const SCANNER_PROJECTION = 'id, organization_id, uid, student_number, full_name, status, avatar_url';
+const BADGE_PROJECTION = 'id, uid, student_number, full_name, course, year, section, status, avatar_url';
+
+export async function getStudentsAction(
+  input?: Partial<PageRequest>
+): Promise<ActionResponse<PaginatedResult<Student>>> {
   const user = await getSessionUser();
   if (!user) return { success: false, error: 'Unauthorized' };
 
+  const request = normalizePageRequest(input, 10);
+  const { from, to } = pageRange(request.page, request.pageSize);
   const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
-  const { data, error } = await admin
+  let query = admin
     .from('students')
-    .select('*')
+    .select(STUDENT_PROJECTION, { count: 'exact' })
     .eq('organization_id', orgId)
     .order('full_name', { ascending: true });
 
+  if (request.query) {
+    const search = `%${request.query}%`;
+    query = query.or(`full_name.ilike.${search},uid.ilike.${search},student_number.ilike.${search}`);
+  }
+  if (request.year) query = query.eq('year', request.year);
+  if (request.status) query = query.eq('status', request.status);
+
+  const { data, error, count } = await withServerTiming('students', async () => query.range(from, to));
+
   if (error) return { success: false, error: error.message };
-  return { success: true, data: data as Student[] };
+  return {
+    success: true,
+    data: {
+      items: (data || []) as Student[],
+      total: count || 0,
+      page: request.page,
+      pageSize: request.pageSize,
+    },
+  };
+}
+
+export async function getScannerStudentsAction(): Promise<ActionResponse<ScannerStudent[]>> {
+  const user = await getSessionUser();
+  if (!user) return { success: false, error: 'Unauthorized' };
+  const orgId = await getEffectiveOrgId(user.organization_id);
+  const admin = createAdminClient();
+  const { data, error } = await admin.from('students').select(SCANNER_PROJECTION).eq('organization_id', orgId).eq('status', 'Active').order('full_name', { ascending: true });
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: (data || []) as ScannerStudent[] };
+}
+
+export async function getBadgeStudentsAction(
+  input?: Partial<PageRequest>
+): Promise<ActionResponse<PaginatedResult<BadgeStudent>>> {
+  const user = await getSessionUser();
+  if (!user) return { success: false, error: 'Unauthorized' };
+  const request = normalizePageRequest(input, 8);
+  const { from, to } = pageRange(request.page, request.pageSize);
+  const orgId = await getEffectiveOrgId(user.organization_id);
+  const admin = createAdminClient();
+  let query = admin
+    .from('students')
+    .select(BADGE_PROJECTION, { count: 'exact' })
+    .eq('organization_id', orgId)
+    .order('full_name', { ascending: true });
+  if (request.query) {
+    const search = `%${request.query}%`;
+    query = query.or(`full_name.ilike.${search},uid.ilike.${search},student_number.ilike.${search}`);
+  }
+  if (request.year) query = query.eq('year', request.year);
+  if (request.status) query = query.eq('status', request.status);
+  const { data, error, count } = await query.range(from, to);
+  if (error) return { success: false, error: error.message };
+  return {
+    success: true,
+    data: {
+      items: (data || []) as BadgeStudent[],
+      total: count || 0,
+      page: request.page,
+      pageSize: request.pageSize,
+    },
+  };
 }
 
 export async function createStudentAction(rawInput: unknown): Promise<ActionResponse<Student>> {
@@ -34,37 +113,9 @@ export async function createStudentAction(rawInput: unknown): Promise<ActionResp
   const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
 
-  // Auto-generate incremental UID if omitted or empty (e.g. ST-2026-0001)
   let finalUid = parsed.data.uid?.trim();
   if (!finalUid) {
-    const currentYear = new Date().getFullYear();
-    const prefix = `ST-${currentYear}-`;
-    const { data: latestStudents } = await admin
-      .from('students')
-      .select('uid')
-      .eq('organization_id', orgId)
-      .ilike('uid', `${prefix}%`)
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    let maxSeq = 0;
-    if (latestStudents && latestStudents.length > 0) {
-      for (const s of latestStudents) {
-        const parts = s.uid.split('-');
-        const num = parseInt(parts[parts.length - 1], 10);
-        if (!isNaN(num) && num > maxSeq) {
-          maxSeq = num;
-        }
-      }
-    }
-    if (maxSeq === 0) {
-      const { count } = await admin
-        .from('students')
-        .select('*', { count: 'exact', head: true })
-        .eq('organization_id', orgId);
-      maxSeq = count || 0;
-    }
-    finalUid = `${prefix}${String(maxSeq + 1).padStart(4, '0')}`;
+    finalUid = await allocateStudentUid(orgId);
   }
 
   const firstName = parsed.data.first_name.trim();
@@ -86,6 +137,7 @@ export async function createStudentAction(rawInput: unknown): Promise<ActionResp
       year: parsed.data.year,
       section: parsed.data.section.trim(),
       status: parsed.data.status,
+      avatar_url: parsed.data.avatar_url || null,
       password_hash: passHash,
       is_first_login: true,
     })
@@ -117,24 +169,141 @@ export async function updateStudentAction(id: string, rawInput: unknown): Promis
   const lastName = parsed.data.last_name.trim();
   const computedFullName = `${firstName} ${lastName}`;
 
-  const { error } = await admin
+  const updatePayload: Record<string, unknown> = {
+    student_number: parsed.data.student_number.trim(),
+    first_name: firstName,
+    last_name: lastName,
+    full_name: computedFullName,
+    course: parsed.data.course,
+    year: parsed.data.year,
+    section: parsed.data.section.trim(),
+    status: parsed.data.status,
+  };
+
+  const { data: updatedStudent, error } = await admin
     .from('students')
-    .update({
-      ...(parsed.data.uid ? { uid: parsed.data.uid.trim() } : {}),
-      student_number: parsed.data.student_number.trim(),
-      first_name: firstName,
-      last_name: lastName,
-      full_name: computedFullName,
-      course: parsed.data.course,
-      year: parsed.data.year,
-      section: parsed.data.section.trim(),
-      status: parsed.data.status,
-    })
+    .update(updatePayload)
     .eq('id', id)
-    .eq('organization_id', orgId);
+    .eq('organization_id', orgId)
+    .select(STUDENT_PROJECTION)
+    .single();
 
   if (error) return { success: false, error: error.message };
+  const walletSync = await syncGoogleWalletObject(updatedStudent as Student, await getWalletDesign(admin, orgId));
+  if (walletSync.status === 'failed') console.warn('Google Wallet profile sync failed:', walletSync.error);
   revalidatePath('/students');
+  revalidatePath('/my-qr');
+  return { success: true, data: undefined };
+}
+
+function avatarStoragePath(publicUrl: string | null): string | null {
+  if (!publicUrl) return null;
+  const marker = '/storage/v1/object/public/student-avatars/';
+  const markerIndex = publicUrl.indexOf(marker);
+  return markerIndex === -1 ? null : decodeURIComponent(publicUrl.slice(markerIndex + marker.length));
+}
+
+function validateAvatarFile(formData: FormData): { file: File } | { error: string } {
+  const file = formData.get('file');
+  if (!(file instanceof File)) return { error: 'No image file provided.' };
+  const maxSize = 2 * 1024 * 1024;
+  if (file.size > maxSize) return { error: 'Image size exceeds the 2MB limit. Please upload a smaller image.' };
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  if (!allowedTypes.includes(file.type.toLowerCase())) {
+    return { error: 'Invalid file format. Only JPG, PNG, and WebP images are allowed (no GIFs).' };
+  }
+  return { file };
+}
+
+export async function replaceStudentAvatarAction(
+  studentId: string,
+  formData: FormData
+): Promise<ActionResponse<{ publicUrl: string }>> {
+  try {
+    const user = await getSessionUser();
+    if (!user || user.role !== 'admin') return { success: false, error: 'Only admins can replace student photos.' };
+    const validated = validateAvatarFile(formData);
+    if ('error' in validated) return { success: false, error: validated.error };
+    const { file } = validated;
+
+    const orgId = await getEffectiveOrgId(user.organization_id);
+    const admin = createAdminClient();
+    const { data: student, error: studentError } = await admin
+      .from('students')
+      .select('id, avatar_url')
+      .eq('id', studentId)
+      .eq('organization_id', orgId)
+      .maybeSingle();
+    if (studentError) return { success: false, error: studentError.message };
+    if (!student) return { success: false, error: 'Student not found in this organization.' };
+
+    const extension = file.type.toLowerCase() === 'image/webp'
+      ? 'webp'
+      : file.type.toLowerCase() === 'image/png' ? 'png' : 'jpg';
+    const filePath = `${orgId}/${studentId}/avatar-${Date.now()}.${extension}`;
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const { error: uploadError } = await admin.storage
+      .from('student-avatars')
+      .upload(filePath, buffer, {
+        contentType: file.type,
+        upsert: false,
+      });
+    if (uploadError) return { success: false, error: `Failed to upload image: ${uploadError.message}` };
+
+    const { data: { publicUrl } } = admin.storage
+      .from('student-avatars')
+      .getPublicUrl(filePath);
+
+    const { data: updated, error: updateError } = await admin
+      .from('students')
+      .update({ avatar_url: publicUrl })
+      .eq('id', studentId)
+      .eq('organization_id', orgId)
+      .select(STUDENT_PROJECTION)
+      .maybeSingle();
+    if (updateError || !updated) {
+      await admin.storage.from('student-avatars').remove([filePath]);
+      return { success: false, error: updateError?.message || 'Student photo could not be updated.' };
+    }
+
+    const previousPath = avatarStoragePath(student.avatar_url);
+    if (previousPath && previousPath !== filePath) {
+      await admin.storage.from('student-avatars').remove([previousPath]);
+    }
+
+    const walletSync = await syncGoogleWalletObject(updated as Student, await getWalletDesign(admin, orgId));
+    if (walletSync.status === 'failed') console.warn('Google Wallet avatar sync failed:', walletSync.error);
+    revalidatePath('/students');
+    revalidatePath('/qr-generator');
+    revalidatePath('/my-qr');
+    return { success: true, data: { publicUrl } };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to upload student photo.' };
+  }
+}
+
+export async function removeStudentAvatarAction(studentId: string): Promise<ActionResponse> {
+  const user = await getSessionUser();
+  if (!user || user.role !== 'admin') return { success: false, error: 'Only admins can remove student photos.' };
+  const orgId = await getEffectiveOrgId(user.organization_id);
+  const admin = createAdminClient();
+  const { data: student, error: readError } = await admin.from('students').select('id, avatar_url')
+    .eq('id', studentId).eq('organization_id', orgId).maybeSingle();
+  if (readError) return { success: false, error: readError.message };
+  if (!student) return { success: false, error: 'Student not found in this organization.' };
+  const { data: updated, error } = await admin.from('students').update({ avatar_url: null })
+    .eq('id', studentId).eq('organization_id', orgId)
+    .select(STUDENT_PROJECTION)
+    .maybeSingle();
+  if (error) return { success: false, error: error.message };
+  const previousPath = avatarStoragePath(student.avatar_url);
+  if (previousPath) await admin.storage.from('student-avatars').remove([previousPath]);
+  const walletSync = await syncGoogleWalletObject(updated as Student, await getWalletDesign(admin, orgId));
+  if (walletSync.status === 'failed') console.warn('Google Wallet avatar removal sync failed:', walletSync.error);
+  revalidatePath('/students');
+  revalidatePath('/qr-generator');
+  revalidatePath('/my-qr');
   return { success: true, data: undefined };
 }
 
@@ -194,9 +363,9 @@ export async function bulkImportStudentsCsvAction(
     last_name?: string;
     full_name?: string;
     course?: string;
-    year: any;
+    year: YearLevel;
     section: string;
-    status?: any;
+    status?: MemberStatus;
   }>
 ): Promise<ActionResponse<{ imported: number; failed: number; errors: string[] }>> {
   const user = await getSessionUser();
@@ -232,7 +401,13 @@ export async function bulkImportStudentsCsvAction(
 
     let uid = (row.uid || '').trim();
     if (!uid) {
-      uid = `ST-${new Date().getFullYear()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+      try {
+        uid = await allocateStudentUid(orgId);
+      } catch {
+        failed++;
+        errors.push(`Row ${row.student_number} (${fullName}): Failed to allocate a unique student UID.`);
+        continue;
+      }
     }
 
     const { error } = await admin.from('students').insert({

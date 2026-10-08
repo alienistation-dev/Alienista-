@@ -1,32 +1,44 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { getStudentsAction } from '@/lib/actions/students';
 import { getSessionUser } from '@/lib/session';
+import { RouteSkeleton } from '@/components/layout/route-skeleton';
 import { StudentTable } from './student-table';
 
-export default async function StudentsPage() {
-  const user = await getSessionUser();
-  const res = await getStudentsAction();
+async function DeferredStudents({
+  studentsPromise,
+  userPromise,
+}: {
+  studentsPromise: ReturnType<typeof getStudentsAction>;
+  userPromise: ReturnType<typeof getSessionUser>;
+}) {
+  const [res, user] = await Promise.all([studentsPromise, userPromise]);
 
   if (!res.success) {
     return (
-      <div className="p-6 rounded-2xl bg-red-950/40 border border-red-800 text-red-300 text-sm">
+      <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-6 text-sm text-destructive">
         Failed to load students: {res.error}
       </div>
     );
   }
 
+  return <StudentTable initialPage={res.data} userRole={user?.role || 'officer'} />;
+}
+
+export default function StudentsPage() {
+  const userPromise = getSessionUser();
+  const studentsPromise = getStudentsAction();
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Student Directory</h1>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1">
-          {user?.role === 'admin'
-            ? 'Manage registered students, issue ID credentials, and export data.'
-            : 'Directory roster view for officers.'}
+        <h1 className="text-xl font-bold text-foreground sm:text-2xl">Student Directory</h1>
+        <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
+          Manage the organization roster, student credentials, and badge photos.
         </p>
       </div>
-
-      <StudentTable initialStudents={res.data} userRole={user?.role || 'officer'} />
+      <Suspense fallback={<RouteSkeleton rows={8} />}>
+        <DeferredStudents studentsPromise={studentsPromise} userPromise={userPromise} />
+      </Suspense>
     </div>
   );
 }

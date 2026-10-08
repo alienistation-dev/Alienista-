@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
+import { NavigationLink } from './navigation-link';
 import { usePathname } from 'next/navigation';
 import { SessionUser } from '@/lib/types/actions';
 import Image from 'next/image';
@@ -14,6 +14,7 @@ import {
   BarChart3,
   Smartphone,
   Settings,
+  ClipboardCheck,
 } from 'lucide-react';
 
 export function Sidebar({ user }: { user: SessionUser }) {
@@ -26,6 +27,7 @@ export function Sidebar({ user }: { user: SessionUser }) {
     { label: 'QR Scanner', href: '/scanner', icon: QrCode, roles: ['admin', 'officer'] },
     { label: 'QR Generator', href: '/qr-generator', icon: BadgePercent, roles: ['admin', 'officer'] },
     { label: 'Statistics', href: '/statistics', icon: BarChart3, roles: ['admin', 'officer'] },
+    { label: 'Assessments', href: '/assessments', icon: ClipboardCheck, roles: ['admin'] },
     { label: 'Device Audit Log', href: '/device-log', icon: Smartphone, roles: ['admin', 'officer'] },
     { label: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
   ];
@@ -50,7 +52,7 @@ export function Sidebar({ user }: { user: SessionUser }) {
           const Icon = item.icon;
           const isActive = pathname === item.href;
           return (
-            <Link
+            <NavigationLink
               key={item.href}
               href={item.href}
               className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
@@ -61,7 +63,7 @@ export function Sidebar({ user }: { user: SessionUser }) {
             >
               <Icon className={`w-4 h-4 ${isActive ? 'text-[#2D6A4F]' : 'text-slate-500'}`} />
               {item.label}
-            </Link>
+            </NavigationLink>
           );
         })}
       </nav>

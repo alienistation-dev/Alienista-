@@ -1,9 +1,14 @@
 'use client';
 
 export function playBeep(type: 'ok' | 'dup' | 'err') {
-  if (typeof window === 'undefined' || !window.AudioContext) return;
+  if (typeof window === 'undefined') return;
   try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const audioWindow = window as Window & typeof globalThis & {
+      webkitAudioContext?: typeof AudioContext;
+    };
+    const AudioContextConstructor = audioWindow.AudioContext || audioWindow.webkitAudioContext;
+    if (!AudioContextConstructor) return;
+    const ctx = new AudioContextConstructor();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);

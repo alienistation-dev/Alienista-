@@ -2,6 +2,11 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+@keyframes navigation-progress {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(320%); }
+}
+
 @layer base {
   :root {
     --background: #F8FAF9;

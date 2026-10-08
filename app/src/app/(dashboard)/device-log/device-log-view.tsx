@@ -1,31 +1,31 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { offlineDB, DeviceScanLog } from '@/lib/offline-db';
 import { Smartphone, Download, Trash2 } from 'lucide-react';
 
-export function DeviceLogView() {
+export function DeviceLogView({ organizationId }: { organizationId: string }) {
   const [logs, setLogs] = useState<DeviceScanLog[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     try {
-      const data = await offlineDB.getDeviceScanHistory();
+      const data = await offlineDB.getDeviceScanHistory(organizationId);
       setLogs(data);
     } catch {
       // IndexedDB error
     } finally {
       setLoading(false);
     }
-  };
+  }, [organizationId]);
 
   useEffect(() => {
-    loadLogs();
-  }, []);
+    void Promise.resolve().then(loadLogs);
+  }, [loadLogs]);
 
   const handleClear = async () => {
     if (!confirm('Clear local on-device scan audit history? This action cannot be undone.')) return;
-    await offlineDB.clearDeviceScanHistory();
+    await offlineDB.clearDeviceScanHistory(organizationId);
     setLogs([]);
   };
 
@@ -98,13 +98,13 @@ export function DeviceLogView() {
           <tbody className="divide-y divide-[#E5EBE5] text-slate-700">
             {loading ? (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-slate-400">
+                <td colSpan={6} className="py-8 text-center text-muted-foreground">
                   Loading on-device log...
                 </td>
               </tr>
             ) : logs.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-slate-400">
+                <td colSpan={6} className="py-8 text-center text-muted-foreground">
                   No local scan audit records found on this device.
                 </td>
               </tr>
@@ -119,7 +119,7 @@ export function DeviceLogView() {
                     <td className="py-3 px-4 font-bold text-slate-900">{l.student_name}</td>
                     <td className="py-3 px-4 text-slate-600">{l.event_name}</td>
                     <td className="py-3 px-4 text-slate-600">{l.officer}</td>
-                    <td className="py-3 px-4 text-slate-400 font-mono text-[11px]">{timeStr}</td>
+                    <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground">{timeStr}</td>
                     <td className="py-3 px-4 text-right">
                       <span
                         className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${

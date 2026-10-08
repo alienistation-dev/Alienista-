@@ -1,14 +1,21 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { Student, YearLevel, MemberStatus } from '@/lib/types/models';
+import type { PaginatedResult } from '@/lib/types/actions';
 import {
   createStudentAction,
   updateStudentAction,
   deleteStudentAction,
   resetStudentPasswordAction,
   bulkImportStudentsCsvAction,
+  replaceStudentAvatarAction,
+  removeStudentAvatarAction,
+  getStudentsAction,
 } from '@/lib/actions/students';
+import { compressAvatarImage } from '@/lib/image-compression';
+import { collectAllPages } from '@/lib/collect-pages';
+import { AttendanceDialog } from './attendance-dialog';
 import {
   Search,
   Plus,
@@ -18,29 +25,39 @@ import {
   Trash2,
   KeyRound,
   AlertTriangle,
+  Camera,
+  Info,
+  ClipboardCheck,
+  Wallet,
 } from 'lucide-react';
+import { getStudentGoogleWalletUrlAction } from '@/lib/actions/google-wallet';
 
 interface StudentTableProps {
-  initialStudents: Student[];
+  initialPage: PaginatedResult<Student>;
   userRole: string;
 }
 
 const YEARS: YearLevel[] = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
 const BLOCKS = ['Block 1', 'Block 2', 'Block 3', 'Block 4'];
 
-export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
-  const [students, setStudents] = useState<Student[]>(initialStudents);
+export function StudentTable({ initialPage, userRole }: StudentTableProps) {
+  const [students, setStudents] = useState<Student[]>(initialPage.items);
+  const [total, setTotal] = useState(initialPage.total);
   const [search, setSearch] = useState('');
   const [yearFilter, setYearFilter] = useState<string>('All');
   const [statusFilter, setStatusFilter] = useState<string>('All');
-  const [page, setPage] = useState(1);
-  const perPage = 10;
+  const [page, setPage] = useState(initialPage.page);
+  const perPage = initialPage.pageSize;
   const [isPending, startTransition] = useTransition();
+  const initialLoad = useRef(true);
   const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [formData, setFormData] = useState({
     uid: '',
     student_number: '',
@@ -50,34 +67,54 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
     year: '1st Year' as YearLevel,
     section: 'Block 1',
     status: 'Active' as MemberStatus,
+    avatar_url: '' as string | null,
   });
 
   // Delete Confirmation Modal State
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+  const [attendanceStudent, setAttendanceStudent] = useState<Student | null>(null);
 
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
   };
 
-  // Filter & Search Logic
-  const filtered = students.filter((s) => {
-    const q = search.toLowerCase();
-    const matchesSearch =
-      !q ||
-      s.full_name.toLowerCase().includes(q) ||
-      s.uid.toLowerCase().includes(q) ||
-      s.student_number.toLowerCase().includes(q);
-    const matchesYear = yearFilter === 'All' || s.year === yearFilter;
-    const matchesStatus = statusFilter === 'All' || s.status === statusFilter;
-    return matchesSearch && matchesYear && matchesStatus;
-  });
+  const totalPages = Math.ceil(total / perPage) || 1;
 
-  const totalPages = Math.ceil(filtered.length / perPage) || 1;
-  const paginated = filtered.slice((page - 1) * perPage, page * perPage);
+  const loadStudentsPage = useCallback(async (requestedPage: number) => {
+    const result = await getStudentsAction({
+      page: requestedPage,
+      pageSize: perPage,
+      query: search,
+      year: yearFilter === 'All' ? undefined : yearFilter as YearLevel,
+      status: statusFilter === 'All' ? undefined : statusFilter as MemberStatus,
+    });
+    if (!result.success) {
+      setToast({ msg: result.error, type: 'err' });
+      return false;
+    }
+    setStudents(result.data.items);
+    setTotal(result.data.total);
+    return true;
+  }, [perPage, search, statusFilter, yearFilter]);
+
+  useEffect(() => {
+    if (initialLoad.current) {
+      initialLoad.current = false;
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      startTransition(async () => {
+        await loadStudentsPage(page);
+      });
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [loadStudentsPage, page]);
 
   const handleOpenAdd = () => {
     setEditingStudent(null);
+    setAvatarFile(null);
+    setAvatarPreview(null);
     setFormData({
       uid: '',
       student_number: '',
@@ -87,12 +124,15 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
       year: '1st Year',
       section: 'Block 1',
       status: 'Active',
+      avatar_url: null,
     });
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (st: Student) => {
     setEditingStudent(st);
+    setAvatarFile(null);
+    setAvatarPreview(st.avatar_url || null);
 
     // Split name if not stored separately
     let fn = st.first_name || '';
@@ -112,39 +152,84 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
       year: st.year,
       section: st.section.startsWith('Block') ? st.section : `Block ${st.section}`,
       status: st.status,
+      avatar_url: st.avatar_url || null,
     });
     setIsModalOpen(true);
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setAvatarUploading(true);
+      const compressed = await compressAvatarImage(file);
+      setAvatarFile(compressed);
+      setAvatarPreview(URL.createObjectURL(compressed));
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Invalid image file.', 'err');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarFile(null);
+    setAvatarPreview(null);
+    setFormData((prev) => ({ ...prev, avatar_url: null }));
   };
 
   const handleSaveStudent = (e: React.FormEvent) => {
     e.preventDefault();
     startTransition(async () => {
+      const payload = {
+        ...formData,
+      };
+
       if (editingStudent) {
-        const res = await updateStudentAction(editingStudent.id, formData);
+        const res = await updateStudentAction(editingStudent.id, payload);
         if (!res.success) {
           showToast(res.error, 'err');
           return;
         }
-        const updatedFullName = `${formData.first_name.trim()} ${formData.last_name.trim()}`;
-        setStudents((prev) =>
-          prev.map((s) =>
-            s.id === editingStudent.id
-              ? {
-                  ...s,
-                  ...formData,
-                  full_name: updatedFullName,
-                }
-              : s
-          )
-        );
+        if (avatarFile) {
+          setAvatarUploading(true);
+          const uploadFd = new FormData();
+          uploadFd.append('file', avatarFile);
+          const uploadRes = await replaceStudentAvatarAction(editingStudent.id, uploadFd);
+          setAvatarUploading(false);
+          if (!uploadRes.success) {
+            showToast(uploadRes.error, 'err');
+            return;
+          }
+        } else if (editingStudent.avatar_url && formData.avatar_url === null) {
+          const removeRes = await removeStudentAvatarAction(editingStudent.id);
+          if (!removeRes.success) {
+            showToast(removeRes.error, 'err');
+            return;
+          }
+        }
+        await loadStudentsPage(page);
         showToast('Student updated successfully!');
       } else {
-        const res = await createStudentAction(formData);
+        const res = await createStudentAction(payload);
         if (!res.success) {
           showToast(res.error, 'err');
           return;
         }
-        setStudents((prev) => [res.data, ...prev]);
+        if (avatarFile) {
+          setAvatarUploading(true);
+          const uploadFd = new FormData();
+          uploadFd.append('file', avatarFile);
+          const uploadRes = await replaceStudentAvatarAction(res.data.id, uploadFd);
+          setAvatarUploading(false);
+          if (!uploadRes.success) {
+            showToast(`Student created, but the photo failed: ${uploadRes.error}`, 'err');
+            return;
+          }
+        }
+        await loadStudentsPage(1);
+        setPage(1);
         showToast(`Student added! Default password is: ${formData.last_name.trim().toUpperCase()}`);
       }
       setIsModalOpen(false);
@@ -159,7 +244,9 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
         showToast(res.error, 'err');
         return;
       }
-      setStudents((prev) => prev.filter((s) => s.id !== studentToDelete.id));
+      const nextPage = students.length === 1 && page > 1 ? page - 1 : page;
+      await loadStudentsPage(nextPage);
+      setPage(nextPage);
       showToast(`Student ${studentToDelete.full_name} deleted.`);
       setStudentToDelete(null);
     });
@@ -176,26 +263,54 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
     });
   };
 
+  const handleOpenWalletPass = (st: Student) => {
+    startTransition(async () => {
+      const res = await getStudentGoogleWalletUrlAction(st.id);
+      if (!res.success) {
+        showToast(res.error, 'err');
+        return;
+      }
+      window.open(res.data.url, '_blank', 'noopener,noreferrer');
+    });
+  };
+
   const handleExportCsv = () => {
-    const headers = ['UID', 'Student Number', 'Full Name', 'Course', 'Year', 'Block', 'Status'];
-    const rows = filtered.map((s) => [
-      `"${s.uid}"`,
-      `"${s.student_number}"`,
-      `"${s.full_name}"`,
-      `"${s.course}"`,
-      `"${s.year}"`,
-      `"${s.section}"`,
-      `"${s.status}"`,
-    ]);
-    const csvContent =
-      'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `students_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    startTransition(async () => {
+      try {
+        const exportStudents = await collectAllPages(async (exportPage) => {
+          const result = await getStudentsAction({
+            page: exportPage,
+            pageSize: 100,
+            query: search,
+            year: yearFilter === 'All' ? undefined : yearFilter as YearLevel,
+            status: statusFilter === 'All' ? undefined : statusFilter as MemberStatus,
+          });
+          if (!result.success) throw new Error(result.error);
+          return result.data;
+        });
+        const headers = ['UID', 'Student Number', 'Full Name', 'Course', 'Year', 'Block', 'Status'];
+        const rows = exportStudents.map((s) => [
+          `"${s.uid}"`,
+          `"${s.student_number}"`,
+          `"${s.full_name}"`,
+          `"${s.course}"`,
+          `"${s.year}"`,
+          `"${s.section}"`,
+          `"${s.status}"`,
+        ]);
+        const csvContent =
+          'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', `students_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : 'Student export failed.', 'err');
+      }
+    });
   };
 
   const handleImportCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -262,7 +377,7 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
       <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
         <div className="flex flex-1 gap-2 items-center">
           <div className="relative flex-1 max-w-sm">
-            <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               value={search}
@@ -344,18 +459,33 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#E5EBE5]">
-            {paginated.length === 0 ? (
+            {students.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-slate-400">
+                <td colSpan={6} className="py-8 text-center text-muted-foreground">
                   No students found matching your filters.
                 </td>
               </tr>
             ) : (
-              paginated.map((st) => (
+              students.map((st) => (
                 <tr key={st.id} className="hover:bg-[#F8FAF9] transition-colors">
                   <td className="py-3 px-4 font-mono font-bold text-[#1B4332]">{st.uid}</td>
                   <td className="py-3 px-4 font-mono text-slate-600">{st.student_number}</td>
-                  <td className="py-3 px-4 font-bold text-slate-900">{st.full_name}</td>
+                  <td className="py-3 px-4 font-bold text-slate-900">
+                    <div className="flex items-center gap-2.5">
+                      {st.avatar_url ? (
+                        <img
+                          src={st.avatar_url}
+                          alt={st.full_name}
+                          className="w-8 h-8 rounded-full object-cover border border-[#2D6A4F]/20 shadow-2xs shrink-0"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-[#EBF5EE] text-[#1B4332] font-bold text-[10px] flex items-center justify-center border border-[#C2E0CC] shrink-0">
+                          {st.first_name?.[0] || st.full_name[0] || 'S'}
+                        </div>
+                      )}
+                      <span className="truncate">{st.full_name}</span>
+                    </div>
+                  </td>
                   <td className="py-3 px-4 text-slate-600">{st.year} · {st.section}</td>
                   <td className="py-3 px-4">
                     <span
@@ -371,6 +501,20 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
                   {userRole === 'admin' && (
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => handleOpenWalletPass(st)}
+                          title="Preview Google Wallet Pass"
+                          className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-[#EBF5EE] hover:text-[#2D6A4F]"
+                        >
+                          <Wallet className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setAttendanceStudent(st)}
+                          title="Manage Attendance"
+                          className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-[#EBF5EE] hover:text-[#2D6A4F]"
+                        >
+                          <ClipboardCheck className="h-3.5 w-3.5" />
+                        </button>
                         <button
                           onClick={() => handleResetPass(st)}
                           title="Reset Password to Default"
@@ -388,7 +532,7 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
                         <button
                           onClick={() => setStudentToDelete(st)}
                           title="Delete Student"
-                          className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-lg transition-colors"
+                          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -404,12 +548,12 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
 
       {/* Mobile Card List View */}
       <div className="md:hidden space-y-2.5">
-        {paginated.length === 0 ? (
-          <div className="p-8 text-center text-xs text-slate-400 bg-white border border-[#E5EBE5] rounded-2xl">
+        {students.length === 0 ? (
+          <div className="rounded-2xl border border-[#E5EBE5] bg-white p-8 text-center text-xs text-muted-foreground">
             No students found.
           </div>
         ) : (
-          paginated.map((st) => (
+          students.map((st) => (
             <div key={st.id} className="p-4 bg-white border border-[#E5EBE5] rounded-2xl space-y-2 shadow-xs">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono font-bold text-[#1B4332]">{st.uid}</span>
@@ -423,12 +567,31 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
                   {st.status}
                 </span>
               </div>
-              <div>
-                <div className="text-sm font-bold text-slate-900">{st.full_name}</div>
-                <div className="text-xs text-slate-500 mt-0.5">{st.student_number} · {st.year} ({st.section})</div>
+              <div className="flex items-center gap-3">
+                {st.avatar_url ? (
+                  <img
+                    src={st.avatar_url}
+                    alt={st.full_name}
+                    className="w-10 h-10 rounded-full object-cover border border-[#2D6A4F]/20 shadow-2xs shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-[#EBF5EE] text-[#1B4332] font-bold text-xs flex items-center justify-center border border-[#C2E0CC] shrink-0">
+                    {st.first_name?.[0] || st.full_name[0] || 'S'}
+                  </div>
+                )}
+                <div>
+                  <div className="text-sm font-bold text-slate-900">{st.full_name}</div>
+                  <div className="text-xs text-slate-500 mt-0.5">{st.student_number} · {st.year} ({st.section})</div>
+                </div>
               </div>
               {userRole === 'admin' && (
                 <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5EBE5]">
+                  <button
+                    onClick={() => setAttendanceStudent(st)}
+                    className="flex items-center gap-1 text-[11px] font-bold text-[#2D6A4F] hover:underline"
+                  >
+                    <ClipboardCheck className="h-3 w-3" /> Attendance
+                  </button>
                   <button
                     onClick={() => handleResetPass(st)}
                     className="text-[11px] text-[#2D6A4F] font-bold hover:underline flex items-center gap-1"
@@ -457,7 +620,7 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
       {/* Pagination Bar */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-2 text-xs text-slate-500 font-medium">
-          <span>Page {page} of {totalPages} ({filtered.length} total)</span>
+          <span>Page {page} of {totalPages} ({total} total)</span>
           <div className="flex items-center gap-1.5">
             <button
               disabled={page <= 1}
@@ -480,22 +643,69 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
       {/* Add / Edit Student Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-[#E5EBE5] rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-white border border-[#E5EBE5] rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-base font-extrabold text-[#1B4332]">
               {editingStudent ? 'Edit Student Details' : 'Add New Student'}
             </h3>
             <form onSubmit={handleSaveStudent} className="space-y-3">
+              {/* Photo Upload Section */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Student Photo (Optional · Max 2MB, JPG/PNG/WebP)
+                </label>
+                <div className="flex items-center gap-3">
+                  <div className="relative w-24 h-24 rounded-2xl bg-[#F8FAF9] border-2 border-dashed border-[#C2E0CC] flex items-center justify-center overflow-hidden shrink-0">
+                    {avatarPreview ? (
+                      <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <Camera className="h-5 w-5 text-muted-foreground" />
+                    )}
+                    {avatarUploading && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-[9px] font-bold">
+                        ...
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#EBF5EE] hover:bg-[#d8eedf] text-[#1B4332] text-xs font-bold rounded-xl border border-[#C2E0CC] transition-colors">
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>{avatarPreview ? 'Change Photo' : 'Upload Photo'}</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={handleAvatarChange}
+                        className="hidden"
+                      />
+                    </label>
+                    {avatarPreview && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveAvatar}
+                        className="block text-[11px] text-red-600 hover:underline font-semibold"
+                      >
+                        Remove Photo
+                      </button>
+                    )}
+                    <p className="text-[10px] text-muted-foreground">Strictly no GIFs. Image will be optimized automatically.</p>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  {editingStudent ? 'UID (System Identifier)' : 'UID (Optional — Auto-assigned if left blank)'}
+                  <span className="inline-flex items-center gap-1">
+                    UID (System Assigned)
+                    <span title="UIDs are allocated by the database to prevent duplicates. CSV imports may supply a controlled UID.">
+                      <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                    </span>
+                  </span>
                 </label>
                 <input
                   type="text"
-                  required={!!editingStudent}
-                  placeholder={editingStudent ? 'e.g. ST-2026-0001' : 'Auto-assigned (e.g. ST-2026-0001)'}
+                  readOnly
+                  placeholder="Allocated when the student is saved"
                   value={formData.uid}
-                  onChange={(e) => setFormData({ ...formData, uid: e.target.value })}
-                  className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#2D6A4F]"
+                  className="w-full bg-slate-100 border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-600 placeholder-slate-400 cursor-not-allowed"
                 />
               </div>
               <div>
@@ -589,10 +799,10 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
                 </button>
                 <button
                   type="submit"
-                  disabled={isPending}
-                  className="px-4 py-2 rounded-xl bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold text-xs transition-colors"
+                  disabled={isPending || avatarUploading}
+                  className="px-4 py-2 rounded-xl bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold text-xs transition-colors disabled:opacity-50"
                 >
-                  {isPending ? 'Saving...' : 'Save Student'}
+                  {isPending || avatarUploading ? 'Saving...' : 'Save Student'}
                 </button>
               </div>
             </form>
@@ -631,6 +841,7 @@ export function StudentTable({ initialStudents, userRole }: StudentTableProps) {
           </div>
         </div>
       )}
+      <AttendanceDialog student={attendanceStudent} onClose={() => setAttendanceStudent(null)} />
     </div>
   );
 }

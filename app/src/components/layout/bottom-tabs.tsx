@@ -1,9 +1,8 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
+import { NavigationLink } from './navigation-link';
 import { usePathname } from 'next/navigation';
-import { SessionUser } from '@/lib/types/actions';
 import {
   LayoutDashboard,
   Users,
@@ -12,7 +11,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 
-export function BottomTabs({ user }: { user: SessionUser }) {
+export function BottomTabs() {
   const pathname = usePathname();
 
   const tabs = [
@@ -31,7 +30,7 @@ export function BottomTabs({ user }: { user: SessionUser }) {
 
         if (tab.isPrimary) {
           return (
-            <Link
+            <NavigationLink
               key={tab.href}
               href={tab.href}
               className="flex flex-col items-center justify-center -mt-5"
@@ -40,12 +39,12 @@ export function BottomTabs({ user }: { user: SessionUser }) {
                 <Icon className="w-6 h-6" />
               </div>
               <span className="text-[10px] font-bold text-[#1B4332] mt-1">{tab.label}</span>
-            </Link>
+            </NavigationLink>
           );
         }
 
         return (
-          <Link
+          <NavigationLink
             key={tab.href}
             href={tab.href}
             className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-colors ${
@@ -54,7 +53,7 @@ export function BottomTabs({ user }: { user: SessionUser }) {
           >
             <Icon className="w-5 h-5" />
             <span className="text-[10px] font-medium mt-0.5">{tab.label}</span>
-          </Link>
+          </NavigationLink>
         );
       })}
     </nav>

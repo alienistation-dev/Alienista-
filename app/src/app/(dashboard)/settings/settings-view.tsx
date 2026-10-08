@@ -1,24 +1,29 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
-import { Officer, OrganizationSettings } from '@/lib/types/models';
+import { GoogleWalletDesign, Officer, OrganizationSettings, SanctionPolicy } from '@/lib/types/models';
 import {
   addOfficerAction,
   resetOfficerPinAction,
   deleteOfficerAction,
   advanceSemesterAction,
   updateAdminCredentialsAction,
+  toggleGoogleWalletAction,
+  setGoogleWalletDesignAction,
 } from '@/lib/actions/settings';
-import { Settings, Shield, UserCheck, Plus, Trash2, KeyRound, ArrowRight, Save, AlertTriangle } from 'lucide-react';
+import { Settings, Shield, UserCheck, Plus, Trash2, KeyRound, ArrowRight, Save, AlertTriangle, Wallet } from 'lucide-react';
+import { SanctionsPolicyEditor } from './sanctions-policy-editor';
 
 export function SettingsView({
   initialSettings,
   initialOfficers,
+  initialActivePolicy,
 }: {
   initialSettings: OrganizationSettings;
   initialOfficers: Officer[];
+  initialActivePolicy: SanctionPolicy | null;
 }) {
-  const [settings, setSettings] = useState<OrganizationSettings>(initialSettings);
+  const [settings] = useState<OrganizationSettings>(initialSettings);
   const [officers, setOfficers] = useState<Officer[]>(initialOfficers);
   const [isPending, startTransition] = useTransition();
   const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
@@ -38,9 +43,40 @@ export function SettingsView({
   const [newAdminUsername, setNewAdminUsername] = useState(settings.admin_username || 'admin');
   const [newAdminPassword, setNewAdminPassword] = useState('');
 
+  const [googleWalletEnabled, setGoogleWalletEnabled] = useState(Boolean(initialSettings.google_wallet_enabled));
+  const [googleWalletDesign, setGoogleWalletDesign] = useState<GoogleWalletDesign>(initialSettings.google_wallet_design === 'legacy' ? 'legacy' : 'builder');
+
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
+  };
+
+  const handleToggleGoogleWallet = () => {
+    startTransition(async () => {
+      const next = !googleWalletEnabled;
+      setGoogleWalletEnabled(next);
+      const res = await toggleGoogleWalletAction(next);
+      if (!res.success) {
+        setGoogleWalletEnabled(!next);
+        showToast(res.error, 'err');
+      } else {
+        showToast(res.message || `Google Wallet passes ${next ? 'enabled' : 'disabled'}.`);
+      }
+    });
+  };
+
+  const handleWalletDesign = (design: GoogleWalletDesign) => {
+    startTransition(async () => {
+      const previous = googleWalletDesign;
+      setGoogleWalletDesign(design);
+      const res = await setGoogleWalletDesignAction(design);
+      if (!res.success) {
+        setGoogleWalletDesign(previous);
+        showToast(res.error, 'err');
+      } else {
+        showToast(res.message || 'Google Wallet design updated.');
+      }
+    });
   };
 
   const handleUpdateAdminCreds = (e: React.FormEvent) => {
@@ -146,7 +182,7 @@ export function SettingsView({
           <span>Admin Master Credentials</span>
         </h3>
         <p className="text-xs text-slate-500">
-          Configure shared executive board credentials (default: <b>admin</b> / <b>admin123</b>).
+          Configure the shared executive board sign-in credentials.
         </p>
 
         <form onSubmit={handleUpdateAdminCreds} className="space-y-3">
@@ -181,7 +217,7 @@ export function SettingsView({
               required
               value={currentAdminPassword}
               onChange={(e) => setCurrentAdminPassword(e.target.value)}
-              placeholder="Current admin password (default: admin123)"
+              placeholder="Current admin password"
               className="w-full bg-[#F8FAF9] border border-[#C2E0CC] rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#2D6A4F]"
             />
           </div>
@@ -240,6 +276,62 @@ export function SettingsView({
         </div>
       </div>
 
+      <SanctionsPolicyEditor
+        initialEnabled={Boolean(settings.sanctions_enabled)}
+        initialPolicy={initialActivePolicy}
+      />
+
+      {/* Google Wallet Passes Card */}
+      <div className="p-6 bg-white border border-[#E5EBE5] rounded-3xl shadow-xs space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Wallet className="w-4 h-4 text-[#2D6A4F]" />
+              <span>Google Wallet Passes</span>
+            </h3>
+            <p className="text-xs text-slate-500">
+              Allow students to save their membership badge directly into Google Wallet.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            role="switch"
+            aria-checked={googleWalletEnabled}
+            onClick={handleToggleGoogleWallet}
+            disabled={isPending}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+              googleWalletEnabled ? 'bg-[#2D6A4F]' : 'bg-slate-200'
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                googleWalletEnabled ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-[#F8FAF9] border border-[#E5EBE5] text-xs text-slate-600 space-y-1">
+          <p className="font-semibold text-slate-800">How it works:</p>
+          <ul className="list-disc list-inside space-y-0.5 text-slate-500">
+            <li>When enabled, students will see a &quot;Save to Google Wallet&quot; button on their badge page.</li>
+            <li>Passes display student details and a scannable QR code compatible with officer attendance cameras.</li>
+          </ul>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#E5EBE5] pt-4">
+          <div>
+            <p className="font-semibold text-slate-800">Wallet design experiment</p>
+            <p className="text-[11px] text-slate-500">Organization-wide and reversible. New saves and refreshes use this choice.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => handleWalletDesign('builder')} disabled={isPending || googleWalletDesign === 'builder'} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${googleWalletDesign === 'builder' ? 'bg-[#2D6A4F] text-white border-[#2D6A4F]' : 'bg-white text-slate-600 border-[#E5EBE5]'}`}>Pass Builder</button>
+            <button type="button" onClick={() => handleWalletDesign('legacy')} disabled={isPending || googleWalletDesign === 'legacy'} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${googleWalletDesign === 'legacy' ? 'bg-slate-700 text-white border-slate-700' : 'bg-white text-slate-600 border-[#E5EBE5]'}`}>Revert</button>
+          </div>
+        </div>
+      </div>
+
       {/* Officer Roster & Access Control */}
       <div className="p-6 bg-white border border-[#E5EBE5] rounded-3xl shadow-xs space-y-5">
         <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -288,7 +380,7 @@ export function SettingsView({
             <tbody className="divide-y divide-[#E5EBE5] text-slate-700">
               {officers.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="py-6 text-center text-slate-400">
+                  <td colSpan={3} className="py-6 text-center text-muted-foreground">
                     No officer accounts created yet.
                   </td>
                 </tr>

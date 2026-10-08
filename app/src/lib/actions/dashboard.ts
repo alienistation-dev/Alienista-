@@ -3,12 +3,19 @@
 import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/session';
 import { ActionResponse } from '@/lib/types/actions';
-import { DashboardStats, Event } from '@/lib/types/models';
+import { withServerTiming } from '@/lib/server-timing';
+import { DashboardStats } from '@/lib/types/models';
+
+export interface RecentAttendanceProjection {
+  id: string;
+  recorded_at: string;
+  student_name: string;
+  event_name: string;
+}
 
 export async function getDashboardDataAction(): Promise<ActionResponse<{
   stats: DashboardStats;
-  events: Event[];
-  recentAttendance: any[];
+  recentAttendance: RecentAttendanceProjection[];
 }>> {
   const user = await getSessionUser();
   if (!user) return { success: false, error: 'Unauthorized' };
@@ -16,12 +23,10 @@ export async function getDashboardDataAction(): Promise<ActionResponse<{
   const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
 
-  // 1. Fetch aggregate metrics
-  const { data: statsRow } = await admin
-    .from('v_dashboard_stats')
-    .select('*')
-    .eq('organization_id', orgId)
-    .maybeSingle();
+  const [{ data: statsRow }, { data: recentAttendance }] = await withServerTiming('dashboard', () => Promise.all([
+    admin.from('v_dashboard_stats').select('total_students, active_students, total_events, open_events, total_attendance, overall_attendance_pct').eq('organization_id', orgId).maybeSingle(),
+    admin.from('v_attendance_details').select('id, recorded_at, student_name, event_name').eq('organization_id', orgId).order('recorded_at', { ascending: false }).limit(10),
+  ]));
 
   const stats: DashboardStats = {
     total_students: Number(statsRow?.total_students || 0),
@@ -32,27 +37,11 @@ export async function getDashboardDataAction(): Promise<ActionResponse<{
     overall_attendance_pct: Number(statsRow?.overall_attendance_pct || 0),
   };
 
-  // 2. Fetch events
-  const { data: events } = await admin
-    .from('events')
-    .select('*')
-    .eq('organization_id', orgId)
-    .order('starts_at', { ascending: false });
-
-  // 3. Fetch recent attendance
-  const { data: recentAttendance } = await admin
-    .from('v_attendance_details')
-    .select('*')
-    .eq('organization_id', orgId)
-    .order('recorded_at', { ascending: false })
-    .limit(10);
-
   return {
     success: true,
     data: {
       stats,
-      events: (events as Event[]) || [],
-      recentAttendance: recentAttendance || [],
+      recentAttendance: (recentAttendance || []) as RecentAttendanceProjection[],
     },
   };
 }

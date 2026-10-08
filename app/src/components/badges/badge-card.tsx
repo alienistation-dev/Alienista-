@@ -1,191 +1,148 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import QRCode from 'qrcode';
-import { Student } from '@/lib/types/models';
-import { Download } from 'lucide-react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
+import { Download, Loader2 } from 'lucide-react';
+import { buildBadgeData, buildBadgeFilename } from '@/lib/badges/badge';
+import type { BadgeStudent } from '@/lib/types/models';
+import { getStudentGoogleWalletUrlAction } from '@/lib/actions/google-wallet';
+import { BadgeArtwork } from '@/components/badges/badge-artwork';
+import type { BadgeArtworkAssets } from '@/lib/badges/artwork';
 
-export function BadgeCard({ student }: { student: Student }) {
-  const [qrDataUrl, setQrDataUrl] = useState<string>('');
+function GoogleWalletEmblem() {
+  return (
+    <svg className="w-6 h-5 shrink-0" viewBox="0 0 36 30" fill="none" aria-hidden="true">
+      <path d="M36 11.291H0V5.6456C0 2.5809 2.6422 0 5.7798 0H30.2202C33.3578 0 36 2.5809 36 5.6456V11.291Z" fill="#34A853" />
+      <path d="M36 16.5H0V10.5C0 7.2429 2.6422 4.5 5.7798 4.5H30.2202C33.3578 4.5 36 7.2429 36 10.5V16.5Z" fill="#FBBC04" />
+      <path d="M36 21.5H0V15.5C0 12.2429 2.6422 9.5 5.7798 9.5H30.2202C33.3578 9.5 36 12.2429 36 15.5V21.5Z" fill="#EA4335" />
+      <path d="M0 12.7409L22.8493 17.9025C25.4795 18.5477 28.4384 17.9025 30.5753 16.2895L36 12.4183V24.5157C36 27.5804 33.3699 30 30.2466 30H5.7534C2.6301 30 0 27.5804 0 24.5157V12.7409Z" fill="#4285F4" />
+    </svg>
+  );
+}
 
-  const uid = student?.uid || 'ST-UNKNOWN';
-  const fullName = student?.full_name || 'Student';
-  const studentNumber = student?.student_number || 'N/A';
-  const course = student?.course || 'BS Computer Science';
-  const year = student?.year || '1st Year';
-  const rawSection = student?.section || '1';
-  const blockLabel = rawSection.startsWith('Block') ? rawSection : `Block ${rawSection}`;
-  const status = student?.status || 'Active';
+export function BadgeCard({
+  student,
+  showDownload = true,
+  walletSaveUrl = null,
+  showWalletButton = false,
+}: {
+  student: BadgeStudent;
+  showDownload?: boolean;
+  walletSaveUrl?: string | null;
+  showWalletButton?: boolean;
+}) {
+  const badge = useMemo(() => buildBadgeData(student), [student]);
+  const [badgeDataUrl, setBadgeDataUrl] = useState('');
+  const [artworkAssets, setArtworkAssets] = useState<BadgeArtworkAssets>({ qrDataUrl: null, avatarDataUrl: null });
+  const [renderError, setRenderError] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!uid) return;
-    QRCode.toDataURL(uid, {
-      width: 240,
-      margin: 1,
-      color: {
-        dark: '#111827',
-        light: '#FFFFFF',
-      },
-    }).then(setQrDataUrl).catch(() => {});
-  }, [uid]);
+    let active = true;
+    import('@/lib/badges/render-badge')
+      .then(async ({ buildBadgeArtworkAssets, renderBadgeToDataUrl }) => {
+        const assets = await buildBadgeArtworkAssets(badge);
+        const url = await renderBadgeToDataUrl(badge, assets);
+        if (active) {
+          setArtworkAssets(assets);
+          setBadgeDataUrl(url);
+        }
+      })
+      .catch(() => {
+        if (active) setRenderError(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [badge]);
 
-  const handleDownloadPng = () => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    canvas.width = 500;
-    canvas.height = 700;
-
-    // Outer Background
-    ctx.fillStyle = '#FFFFFF';
-    ctx.beginPath();
-    ctx.roundRect(0, 0, 500, 700, 20);
-    ctx.fill();
-
-    // Top Header Banner
-    ctx.fillStyle = '#1B4332';
-    ctx.beginPath();
-    ctx.roundRect(0, 0, 500, 220, [20, 20, 0, 0]);
-    ctx.fill();
-
-    // Brand Title
-    ctx.fillStyle = '#D4AF37';
-    ctx.font = 'bold 13px sans-serif';
-    ctx.fillText('ALIENISTA · ACS CAMPUS ID BADGE', 30, 45);
-
-    // Full Name
-    const name = fullName;
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 24px sans-serif';
-    ctx.fillText(name.length > 24 ? name.slice(0, 22) + '...' : name, 30, 95);
-
-    // Course & Year
-    ctx.fillStyle = '#D1E7D7';
-    ctx.font = '15px sans-serif';
-    ctx.fillText(`${course} · ${year}`, 30, 135);
-
-    // Divider Line
-    ctx.strokeStyle = 'rgba(212, 175, 55, 0.4)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(30, 165);
-    ctx.lineTo(470, 165);
-    ctx.stroke();
-
-    // Block & Status
-    ctx.fillStyle = '#D4AF37';
-    ctx.font = 'bold 14px sans-serif';
-    ctx.fillText(`${blockLabel} · ${status}`, 30, 195);
-
-    // White QR Container Box
-    ctx.fillStyle = '#F8FAF9';
-    ctx.strokeStyle = '#E5EBE5';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(30, 250, 210, 210, 12);
-    ctx.fill();
-    ctx.stroke();
-
-    // Draw QR Image
-    if (qrDataUrl) {
-      const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, 40, 260, 190, 190);
-
-        // Information Column
-        const infoX = 265;
-        ctx.fillStyle = '#2D6A4F';
-        ctx.font = 'bold 11px sans-serif';
-        ctx.fillText('SYSTEM UID', infoX, 280);
-
-        ctx.fillStyle = '#111827';
-        ctx.font = 'bold 16px monospace';
-        ctx.fillText(uid, infoX, 306);
-
-        ctx.fillStyle = '#2D6A4F';
-        ctx.font = 'bold 11px sans-serif';
-        ctx.fillText('STUDENT NUMBER', infoX, 350);
-
-        ctx.fillStyle = '#111827';
-        ctx.font = 'bold 15px monospace';
-        ctx.fillText(studentNumber, infoX, 376);
-
-        ctx.fillStyle = '#2D6A4F';
-        ctx.font = 'bold 11px sans-serif';
-        ctx.fillText('BLOCK', infoX, 420);
-
-        ctx.fillStyle = '#4B5563';
-        ctx.font = '14px sans-serif';
-        ctx.fillText(blockLabel, infoX, 444);
-
-        // Footer
-        ctx.strokeStyle = '#E5EBE5';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(30, 620);
-        ctx.lineTo(470, 620);
-        ctx.stroke();
-
-        ctx.fillStyle = '#1B4332';
-        ctx.font = 'bold 12px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('ASSOCIATION OF COMPUTER SCIENTISTS · PSU', 250, 655);
-
-        // Download
-        const a = document.createElement('a');
-        a.download = `${fullName.replace(/\s+/g, '_')}_Alienista_Badge.png`;
-        a.href = canvas.toDataURL('image/png');
-        a.click();
-      };
-      img.src = qrDataUrl;
-    }
+  const handleDownload = () => {
+    if (!badgeDataUrl) return;
+    const link = document.createElement('a');
+    link.download = buildBadgeFilename(badge);
+    link.href = badgeDataUrl;
+    link.click();
   };
 
+  const handleDynamicWalletClick = () => {
+    setErrorMessage(null);
+    startTransition(async () => {
+      try {
+        const res = await getStudentGoogleWalletUrlAction(student.id);
+        if (res.success) {
+          if (res.data?.url) {
+            window.open(res.data.url, '_blank', 'noopener,noreferrer');
+            if (res.message) setErrorMessage(res.message);
+          } else {
+            setErrorMessage('Google Wallet pass URL was not returned.');
+          }
+        } else {
+          setErrorMessage(res.error || 'Failed to generate Google Wallet pass.');
+        }
+      } catch {
+        setErrorMessage('Unable to generate pass. Please check your network or server configuration.');
+      }
+    });
+  };
+
+  const shouldShowWallet = Boolean(walletSaveUrl || showWalletButton);
+
   return (
-    <div className="bg-white border border-[#E5EBE5] rounded-3xl overflow-hidden shadow-md max-w-xs mx-auto flex flex-col justify-between">
-      {/* Top Header Card */}
-      <div className="bg-[#1B4332] p-4 text-left border-b border-[#2D6A4F]/30">
-        <div className="text-[10px] uppercase font-bold text-[#D4AF37] tracking-wider">Alienista · Campus ID</div>
-        <div className="text-sm font-bold text-white mt-1 truncate">{fullName}</div>
-        <div className="text-xs text-[#D1E7D7] mt-0.5">{course} · {year}</div>
+    <div className="bg-white border border-[#E5EBE5] rounded-lg overflow-hidden shadow-md max-w-sm mx-auto">
+      <div className="relative aspect-[5/8] bg-[#F8FAF9] flex items-center justify-center">
+        <BadgeArtwork badge={badge} assets={artworkAssets} />
+        {renderError && <div className="absolute inset-0 flex items-center justify-center bg-white/85 px-6 text-center text-xs text-red-700">Badge rendering failed. Reload and try again.</div>}
       </div>
 
-      {/* Body QR Code */}
-      <div className="p-5 flex items-center gap-4">
-        <div className="w-24 h-24 bg-[#F8FAF9] rounded-2xl p-1.5 shrink-0 flex items-center justify-center border border-[#E5EBE5]">
-          {qrDataUrl ? (
-            <img src={qrDataUrl} alt={uid} className="w-full h-full object-contain" />
-          ) : (
-            <div className="text-[10px] text-slate-400">Generating...</div>
+      {(showDownload || shouldShowWallet) && (
+        <div className="p-3 bg-[#F8FAF9] border-t border-[#E5EBE5] space-y-2">
+          {showDownload && (
+            <button
+              onClick={handleDownload}
+              disabled={!badgeDataUrl}
+              className="w-full py-2.5 bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold rounded-lg text-xs flex items-center justify-center gap-2 transition-colors shadow-xs disabled:opacity-40 cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>Download Badge PNG</span>
+            </button>
           )}
-        </div>
-        <div className="space-y-1.5 text-xs text-left">
-          <div>
-            <div className="text-[9px] uppercase tracking-wider font-bold text-[#2D6A4F]">UID</div>
-            <div className="font-mono font-bold text-slate-900 text-[11px]">{uid}</div>
-          </div>
-          <div>
-            <div className="text-[9px] uppercase tracking-wider font-bold text-[#2D6A4F]">Student No.</div>
-            <div className="font-mono text-slate-700 text-[11px]">{studentNumber}</div>
-          </div>
-          <div>
-            <div className="text-[9px] uppercase tracking-wider font-bold text-[#2D6A4F]">Block</div>
-            <div className="text-slate-700 text-[11px]">{blockLabel}</div>
-          </div>
-        </div>
-      </div>
 
-      {/* Card Actions */}
-      <div className="p-3 bg-[#F8FAF9] border-t border-[#E5EBE5] flex items-center justify-end gap-2">
-        <button
-          onClick={handleDownloadPng}
-          className="px-3.5 py-1.5 bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-semibold rounded-xl text-xs flex items-center gap-1.5 transition-colors shadow-xs"
-        >
-          <Download className="w-3.5 h-3.5" />
-          <span>Download PNG</span>
-        </button>
-      </div>
+          {walletSaveUrl ? (
+            <a
+              href={walletSaveUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Add to Google Wallet"
+              className="w-full h-12 bg-[#1F1F1F] hover:bg-[#2F2F2F] active:bg-[#000000] text-white font-medium rounded-full text-xs sm:text-sm flex items-center justify-center gap-3 transition-all shadow-sm border border-black/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1F1F1F]"
+            >
+              <GoogleWalletEmblem />
+              <span>Add to Google Wallet</span>
+            </a>
+          ) : shouldShowWallet ? (
+            <div>
+              <button
+                type="button"
+                onClick={handleDynamicWalletClick}
+                disabled={isPending}
+                aria-label="Add to Google Wallet"
+                className="w-full h-12 bg-[#1F1F1F] hover:bg-[#2F2F2F] active:bg-[#000000] text-white font-medium rounded-full text-xs sm:text-sm flex items-center justify-center gap-3 transition-all shadow-sm border border-black/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1F1F1F] disabled:opacity-60 cursor-pointer"
+              >
+                {isPending ? (
+                  <Loader2 className="w-5 h-5 animate-spin shrink-0 text-white" />
+                ) : (
+                  <GoogleWalletEmblem />
+                )}
+                <span>{isPending ? 'Adding to Google Wallet...' : 'Add to Google Wallet'}</span>
+              </button>
+              {errorMessage && (
+                <p className="mt-2 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 text-center">
+                  {errorMessage}
+                </p>
+              )}
+            </div>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }

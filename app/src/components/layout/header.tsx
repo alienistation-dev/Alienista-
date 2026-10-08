@@ -6,6 +6,7 @@ import { logoutAction } from '@/lib/actions/auth';
 import { SessionUser } from '@/lib/types/actions';
 import { LogOut, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
+import { offlineDB } from '@/lib/offline-db';
 
 interface HeaderProps {
   user: SessionUser;
@@ -20,7 +21,7 @@ export function Header({ user, academicYear = '2026-2027', semester = 'First Sem
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   React.useEffect(() => {
-    setIsOnline(navigator.onLine);
+    void Promise.resolve().then(() => setIsOnline(navigator.onLine));
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
     window.addEventListener('online', handleOnline);
@@ -34,6 +35,7 @@ export function Header({ user, academicYear = '2026-2027', semester = 'First Sem
   const handleConfirmLogout = async () => {
     setIsLoggingOut(true);
     await logoutAction();
+    await offlineDB.clearRosterCaches();
     router.push('/login');
     router.refresh();
   };
