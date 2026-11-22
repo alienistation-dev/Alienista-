@@ -36,7 +36,7 @@ describe('canonical badge data', () => {
       width: 400,
       height: 640,
       qr_size: 280,
-      colors: { brand: '#1B4332', accent: '#D4AF37', qr_dark: '#111827' },
+      colors: { brand: '#1A3822', accent: '#FFFFFF', qr_dark: '#080808' },
     });
     expect(buildBadgeFilename(buildBadgeData(student))).toBe('ST-2026-0001_Ada_Lovelace_badge.png');
   });

@@ -41,7 +41,7 @@ export function buildBadgeSvgMarkup(badge: BadgeData, assets: BadgeArtworkAssets
     <text x="24" y="32" fill="${colors.accent}" font-family="Arial, sans-serif" font-size="13" font-weight="700">ALIENISTA · ACS CAMPUS BADGE</text>
     ${avatar}
     <text x="116" y="70" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="18" font-weight="700">${name}</text>
-    <text x="116" y="95" fill="#D1E7D7" font-family="Arial, sans-serif" font-size="13">${courseYear}</text>
+    <text x="116" y="95" fill="#EAF0EA" font-family="Arial, sans-serif" font-size="13">${courseYear}</text>
     <text x="116" y="118" fill="${colors.accent}" font-family="Arial, sans-serif" font-size="12" font-weight="700">${blockStatus}</text>
     ${qr}
     <rect x="36" y="476" width="328" height="126" rx="16" fill="${colors.mutedSurface}" stroke="${colors.border}" stroke-width="1.5"/>

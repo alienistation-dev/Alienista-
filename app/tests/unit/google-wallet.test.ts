@@ -55,7 +55,7 @@ describe('Google Wallet Pass Generation', () => {
       alternateText: '2024-0042',
     });
     expect(genericObject.cardTitle.defaultValue.value).toBe('Alienista');
-    expect(genericObject.hexBackgroundColor).toBe('#2d6a4f');
+    expect(genericObject.hexBackgroundColor).toBe('#1a3822');
     expect(genericObject.logo?.sourceUri.uri).toBe(
       'https://example.com/avatar.png?v=2026-01-01T00%3A00%3A00Z'
     );

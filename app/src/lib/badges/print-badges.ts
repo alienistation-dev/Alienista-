@@ -18,7 +18,7 @@ export function buildBadgePrintDocument(imageUrls: readonly string[]): string {
     * { box-sizing: border-box; }
     body { margin: 0; font-family: Arial, sans-serif; }
     main { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8mm; }
-    img { width: 100%; height: auto; break-inside: avoid; border: 1px solid #E5EBE5; }
+    img { width: 100%; height: auto; break-inside: avoid; border: 1px solid #E0E2DC; }
   </style></head><body><main>${images}</main><script>
     window.addEventListener('load', function () {
       window.focus();

@@ -82,7 +82,7 @@ export function createGoogleWalletObject(student: Student, config: GoogleWalletC
 
   const cardTitle = process.env.GOOGLE_WALLET_CARD_TITLE?.trim() || 'Alienista';
   const subheader = process.env.GOOGLE_WALLET_SUBHEADER?.trim() || 'Student Member';
-  const hexBackgroundColor = process.env.GOOGLE_WALLET_HEX_BACKGROUND_COLOR?.trim() || (design === 'legacy' ? '#1b4332' : '#2d6a4f');
+  const hexBackgroundColor = process.env.GOOGLE_WALLET_HEX_BACKGROUND_COLOR?.trim() || '#1a3822';
 
   const object = {
     id: fullObjectId,
@@ -122,7 +122,6 @@ export function createGoogleWalletObject(student: Student, config: GoogleWalletC
 
   if (design === 'legacy') {
     object.subheader = { defaultValue: { language: 'en-US', value: `${student.course} - ${student.year}` } };
-    object.hexBackgroundColor = '#1b4332';
     object.textModulesData = [
       { id: 'program', header: 'PROGRAM', body: `${student.course} - ${student.year}` },
       { id: 'student_number', header: 'STUDENT NO.', body: student.student_number },
