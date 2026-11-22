@@ -1,7 +1,7 @@
 import { cookies, headers } from 'next/headers';
 import { cache } from 'react';
 import { SessionUser } from '@/lib/types/actions';
-import { env, isSecureOrigin } from '@/lib/env';
+import { env, isSecureOrigin, resolveSessionSecret } from '@/lib/env';
 
 const SESSION_COOKIE_NAME = 'alienista_session';
 
@@ -9,7 +9,7 @@ async function getCryptoKey() {
   const enc = new TextEncoder();
   return crypto.subtle.importKey(
     'raw',
-    enc.encode(env.sessionSecret),
+    enc.encode(resolveSessionSecret(process.env.SESSION_SECRET, process.env.NODE_ENV)),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign', 'verify']
