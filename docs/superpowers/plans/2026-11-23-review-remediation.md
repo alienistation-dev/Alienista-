@@ -27,9 +27,9 @@ Follow-ups found in phases 6–9:
 
 Owner:
 - [x] Rotate `SESSION_SECRET` in Vercel Production (owner, 2026-11-23)
-- [ ] Repair and push migrations (`migration list --linked`, `repair` if needed, `db push`)
+- [ ] Production database catch-up — **in progress**, see "Production database" below
 - [ ] Set Vercel function region to `syd1` — deferred by owner 2026-11-23 ("for now, maybe no")
-- [x] Merge into `dev` (fast-forward to `4077695`, 2026-11-23). Owner: "the feat should be in dev for now (but once im ok with it, then go to main"
+- [x] Merge into `dev` (fast-forward; now `1af1615`, 2026-11-23). Owner: "the feat should be in dev for now (but once im ok with it, then go to main"
 - [ ] Merge `dev` to `main` and deploy — after owner approval
 
 Parked:
@@ -56,19 +56,29 @@ Parked:
 | 3 | Speed, part 1 | slowness 1, 3 (assessments) | **Done** | `staleTimes` in build output. Browser check **not done** |
 | 4 | Offline shell | 12–15 | **Done** | Production build checked in a browser: CSS `200 text/css` from cache offline; offline navigation shows `/offline.html`. Pending v1 scans are kept, but they have no `organization_id`, so they do not sync |
 | 5 | Offline replay | 8, 16–18 | **Done** | Unit tests only (database mocked). Open: an officer can still backdate a replay by up to 7 days; replays into closed events without slots are refused; admin-captured scans are credited to whoever syncs |
-| 6 | Wallet lifecycle | 11, JWT size, official button | Planned | Official artwork; ID-only JWT under 1,800 chars; inactive students' passes set inactive |
-| 7 | UI tokens | 437 hex colours, ACS palette, 9–10px text, manifest `id`/colours | Planned | Colours come from tokens; manifest uses logo colours |
-| 8 | Speed, part 2 | region, remaining reloads (settings, policy editor, import), login latency, badge PNG wait | Planned | Measured on the deployed site |
-| 9 | Screen-by-screen UI and Wallet UI review | — | Planned | Each screen checked at 360 px with its main task, empty and error states |
+| 6 | Wallet lifecycle | 11, JWT size, official button | **Done** (`508b3ff`) | Official artwork; ID-only JWT (~740 chars); inactive/deleted students' passes set INACTIVE. Google API mocked only |
+| 7 | UI tokens | 437 hex colours, ACS palette, 9–10px text, manifest `id`/colours | **Done** (`39a0921`) | 0 hex colours in `.tsx`; manifest uses logo colours. Printed badge/Wallet pass colours left for owner |
+| 8 | Speed, part 2 | region, remaining reloads (settings, policy editor, import), login latency, badge PNG wait | **Done** (`d0796b9`), region deferred | No full reloads; login one round trip shorter. Not yet measured on the deployed site |
+| 9 | Screen-by-screen UI and Wallet UI review | — | **Done** (`1af1615`) | 11 screens at 360 px, admin and student, production build on local data. Wallet button not seen live (Wallet disabled locally) |
 | — | Medium findings 7, 9, 10, manual slot check, auto-sync batch size | 7, 9, 10, Medium list | Planned | One test each |
 
-## Owner actions (blocked on the owner)
+## Production database (project `izznqcirnxazbpyqcach`, Sydney)
 
-1. Rotate `SESSION_SECRET` in Vercel Production **before** deploying phase 1.
-2. `supabase migration list --linked`; if `20261112063129` or `20260905000001` shows as not applied remotely, `supabase migration repair --status applied <version>`; then `supabase db push`.
-3. Set the Vercel function region to `syd1`.
-4. Approve merging `feat/sprint-reconcile` to `main` and the deploy.
+Work only in `C:\Users\Hawksprey\source\repos\Alienista-reconcile` (branch `feat/sprint-reconcile`). The other checkouts do not have the current migrations.
 
+Facts (2026-11-23):
+- Migrations were applied by hand in the SQL editor, so the CLI history table is empty. `db push` now would try to run all 16 files. **Do not push until steps 1–3 are done.**
+- `supabase/checks/migration-markers.sql` result: all present **except** `correct_semester_assessment` (from `20260822033000`), `google_wallet_design` (`20260905000001`, never applied: it had a syntax error), and the two new migrations.
+
+Steps, in order (each needs the previous result):
+1. [x] Run `supabase/checks/migration-markers.sql` in the SQL editor (read-only).
+2. [ ] Run `supabase/checks/missing-objects.sql` in the SQL editor (read-only). Lists every missing function/table/view/index/trigger.
+3. [ ] Maintainer writes one catch-up migration for what step 2 lists, makes `20261123090000` safe when the function is missing, and tests both locally against the same partial state.
+4. [ ] `npx supabase link --project-ref izznqcirnxazbpyqcach`, then `migration repair --status applied` for the fully present versions only (list comes from steps 1–2).
+5. [ ] `npx supabase db push --include-all --dry-run`; it must list only the not-applied files. Then `db push --include-all`.
+6. [ ] Re-run both checks; expect only `handle_new_user` / `on_auth_user_created` gone and nothing else missing.
+
+Other owner items: `syd1` region (deferred), approve `dev` → `main`.
 ## Parked
 
 - "My Clearance" page reading the CSG clearance sheet. Needs CSG consent and an owner decision. The CSG's sheet currently exposes every student's record to anyone with one student's link.
