@@ -1,8 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   reactCompiler: true,
+  logging: {
+    // Dev logs print every Server Action's arguments, including plaintext passwords.
+    serverFunctions: false,
+  },
 };
 
 export default nextConfig;
