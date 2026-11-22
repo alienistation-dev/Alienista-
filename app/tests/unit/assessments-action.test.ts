@@ -58,6 +58,38 @@ describe('assessment action authorization', () => {
     });
   });
 
+  it('saves drafts with the attendance revision the database guard checks', async () => {
+    const upserts: Array<Record<string, unknown>> = [];
+    mocks.getSessionUser.mockResolvedValue({ id: 'admin-1', organization_id: 'org-1', role: 'admin' });
+    mocks.createAdminClient.mockReturnValue({
+      from: (table: string) => {
+        const rows: Record<string, unknown> = {
+          organization_settings: { academic_year: '2026-2027', semester: 'First Semester', sanctions_enabled: true, attendance_revision: 7 },
+          sanction_policies: { id: 'policy-1', version: 1, mode: 'weighted_missed_points', sanction_tiers: [] },
+        };
+        const lists: Record<string, unknown[]> = { students: [{ id: 'student-1' }], events: [], semester_assessments: [] };
+        const builder: Record<string, unknown> = {
+          select: () => builder,
+          eq: () => builder,
+          in: () => builder,
+          order: () => builder,
+          limit: () => builder,
+          upsert: (payload: Record<string, unknown>) => { upserts.push(payload); return builder; },
+          single: async () => ({ data: { id: 'assessment-1', ...upserts.at(-1) }, error: null }),
+          maybeSingle: async () => ({ data: rows[table] ?? null, error: null }),
+          then: (resolve: (value: unknown) => unknown) => resolve({ data: lists[table] ?? [], error: null }),
+        };
+        return builder;
+      },
+    });
+
+    const result = await calculateSemesterAssessment('2026-2027:First Semester');
+
+    expect(result.success).toBe(true);
+    expect(upserts).toHaveLength(1);
+    expect(upserts[0]).toMatchObject({ student_id: 'student-1', attendance_revision: 7 });
+  });
+
   it('finalizes only drafts calculated with the currently active policy', async () => {
     const assessmentFilters: Array<[string, unknown]> = [];
     mocks.getSessionUser.mockResolvedValue({ id: 'admin-1', organization_id: 'org-1', role: 'admin' });

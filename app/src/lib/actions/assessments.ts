@@ -16,14 +16,16 @@ function termKey(settings: { academic_year: string; semester: string }): string 
 async function resolveTerm(admin: ReturnType<typeof createAdminClient>, orgId: string, requestedTerm: string) {
   const { data, error } = await admin
     .from('organization_settings')
-    .select('academic_year, semester, sanctions_enabled')
+    .select('academic_year, semester, sanctions_enabled, attendance_revision')
     .eq('organization_id', orgId)
     .maybeSingle();
   if (error || !data) throw new Error('Organization term settings are unavailable.');
   if (!data.sanctions_enabled) throw new Error('Sanctions are disabled in organization settings.');
   const currentTerm = termKey(data);
   if (requestedTerm !== currentTerm) throw new Error('The requested semester is not the active organization term.');
-  return currentTerm;
+  // The assessment_sanctions_gate trigger rejects drafts whose revision differs from the
+  // organization's, so attendance changed mid-calculation fails loudly instead of saving stale scores.
+  return { term: currentTerm, attendanceRevision: data.attendance_revision as number };
 }
 
 async function requireSanctionsEnabled(admin: ReturnType<typeof createAdminClient>, orgId: string) {
@@ -65,7 +67,7 @@ export async function calculateSemesterAssessment(
   try {
     const orgId = await getEffectiveOrgId(user.organization_id);
     const admin = createAdminClient();
-    const term = await resolveTerm(admin, orgId, semesterId);
+    const { term, attendanceRevision } = await resolveTerm(admin, orgId, semesterId);
     const policy = await loadPolicy(admin, orgId, policyId);
     const { data: students, error: studentsError } = await admin
       .from('students').select('id').eq('organization_id', orgId).eq('status', 'Active');
@@ -117,6 +119,7 @@ export async function calculateSemesterAssessment(
         tier_threshold: tier?.matched_threshold || null,
         obligation_text: tier?.obligation_text || null,
         contributions: calculated.contributions,
+        attendance_revision: attendanceRevision,
       };
       const { data: assessment, error } = await admin
         .from('semester_assessments')
