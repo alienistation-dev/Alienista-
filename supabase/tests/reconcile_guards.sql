@@ -40,9 +40,14 @@ BEGIN
   ASSERT updated.late_penalty_percent = 40, 'Late penalty was not stored';
 
   -- Finalized assessments block both update and delete.
+  -- The live 20261112063129 trigger requires sanctions enabled and a matching attendance revision.
+  RESET ROLE;
+  UPDATE public.organization_settings SET sanctions_enabled = true WHERE organization_id = org_id;
   INSERT INTO public.semester_assessments(id, organization_id, student_id, term_key, policy_id, policy_version,
-      maximum_points, earned_points, missed_points, attendance_ratio, status, finalized_at, finalized_by)
-    VALUES (assessment_id, org_id, student_id, '2026-2027:First Semester', policy_id, 1, 1, 1, 0, 1, 'finalized', now(), admin_id);
+      maximum_points, earned_points, missed_points, attendance_ratio, status, finalized_at, finalized_by, attendance_revision)
+    SELECT assessment_id, org_id, student_id, '2026-2027:First Semester', policy_id, 1, 1, 1, 0, 1, 'finalized', now(), admin_id,
+      attendance_revision FROM public.organization_settings WHERE organization_id = org_id;
+  SET LOCAL ROLE service_role;
   BEGIN
     PERFORM public.update_attendance_record(record_id, org_id, admin_id, NULL, now(), 'on_time', 0, NULL, 'After finalization');
     RAISE EXCEPTION 'Finalized update accepted';
