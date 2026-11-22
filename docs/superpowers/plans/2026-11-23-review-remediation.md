@@ -27,7 +27,7 @@ Follow-ups found in phases 6–9:
 
 Owner:
 - [x] Rotate `SESSION_SECRET` in Vercel Production (owner, 2026-11-23)
-- [ ] Production database catch-up — **in progress**, see "Production database" below
+- [x] Production database catch-up (2026-11-23), see "Production database" below
 - [ ] Set Vercel function region to `syd1` — deferred by owner 2026-11-23 ("for now, maybe no")
 - [x] Merge into `dev` (fast-forward; now `1af1615`, 2026-11-23). Owner: "the feat should be in dev for now (but once im ok with it, then go to main"
 - [ ] Merge `dev` to `main` and deploy — after owner approval
@@ -66,17 +66,16 @@ Parked:
 
 Work only in `C:\Users\Hawksprey\source\repos\Alienista-reconcile` (branch `feat/sprint-reconcile`). The other checkouts do not have the current migrations.
 
-Facts (2026-11-23):
-- Migrations were applied by hand in the SQL editor, so the CLI history table is empty. `db push` now would try to run all 16 files. **Do not push until steps 1–3 are done.**
-- `supabase/checks/migration-markers.sql` result: all present **except** `correct_semester_assessment` (from `20260822033000`), `google_wallet_design` (`20260905000001`, never applied: it had a syntax error), and the two new migrations.
+**Caught up 2026-11-23.** The CLI history now matches the schema, so future migrations go out with plain `npx supabase db push`.
 
-Steps, in order (each needs the previous result):
-1. [x] Run `supabase/checks/migration-markers.sql` in the SQL editor (read-only).
-2. [ ] Run `supabase/checks/missing-objects.sql` in the SQL editor (read-only). Lists every missing function/table/view/index/trigger.
-3. [ ] Maintainer writes one catch-up migration for what step 2 lists, makes `20261123090000` safe when the function is missing, and tests both locally against the same partial state.
-4. [ ] `npx supabase link --project-ref izznqcirnxazbpyqcach`, then `migration repair --status applied` for the fully present versions only (list comes from steps 1–2).
-5. [ ] `npx supabase db push --include-all --dry-run`; it must list only the not-applied files. Then `db push --include-all`.
-6. [ ] Re-run both checks; expect only `handle_new_user` / `on_auth_user_created` gone and nothing else missing.
+What was found: migrations had been applied by hand, so the history table was empty. Everything was live except `correct_semester_assessment` (from `20260822033000`), `google_wallet_design` (`20260905000001`, never applied: it had a syntax error) and the two new migrations. The `anon`/`authenticated` revokes from `20260822033000` were confirmed live, and the avatar MIME list (`20260829180000`) was already set.
+
+Steps done:
+1. [x] `supabase/checks/migration-markers.sql` and `supabase/checks/missing-objects.sql` (read-only).
+2. [x] Catch-up migration `20261123080000_restore_correct_semester_assessment.sql`, tested locally in both orders with `20261123090000`.
+3. [x] `migration repair --status applied` for the 13 live versions: `001`–`004`, `20260821164553`, `20260821172605`, `20260822020500`, `20260822033000`, `20260829180000`, `20260830071747`, `20260830073118`, `20260905000000`, `20261112063129`.
+4. [x] `db push --include-all`: dry run, then pushed `20260905000001`, `20261122130000`, `20261123080000` and `20261123090000`.
+5. [x] Re-ran both checks with `npx supabase db query --linked -f <file>`. All markers are present; only the intentionally dropped `handle_new_user` and `on_auth_user_created` are missing. `correct_semester_assessment` is SECURITY INVOKER and only `service_role` can execute it.
 
 Other owner items: `syd1` region (deferred), approve `dev` → `main`.
 ## Parked
