@@ -1,21 +1,23 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { calculateSemesterAssessment, finalizeSemesterAssessment } from '@/lib/actions/assessments';
 import type { SemesterAssessment } from '@/lib/types/models';
 
 export function AssessmentsView({ termKey, initialAssessments, sanctionsEnabled }: { termKey: string; initialAssessments: SemesterAssessment[]; sanctionsEnabled: boolean }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const calculate = () => startTransition(async () => {
     const result = await calculateSemesterAssessment(termKey);
     if (!result.success) { setError(result.error); return; }
-    window.location.reload();
+    router.refresh();
   });
   const finalize = (id: string) => startTransition(async () => {
     const result = await finalizeSemesterAssessment(id);
     if (!result.success) { setError(result.error); return; }
-    window.location.reload();
+    router.refresh();
   });
   return (
     <div className="space-y-5">
