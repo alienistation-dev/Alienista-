@@ -10,7 +10,7 @@ import { revalidatePath } from 'next/cache';
 import { allocateStudentUid } from '@/lib/students/uid';
 import { withServerTiming } from '@/lib/server-timing';
 import { normalizePageRequest, pageRange } from '@/lib/pagination';
-import { syncGoogleWalletObject } from '@/lib/badges/google-wallet';
+import { deactivateGoogleWalletObject, syncGoogleWalletObject } from '@/lib/badges/google-wallet';
 import type { GoogleWalletDesign } from '@/lib/types/models';
 
 const STUDENT_PROJECTION = 'id, organization_id, uid, student_number, first_name, last_name, full_name, course, year, section, status, is_first_login, avatar_url, created_at, updated_at';
@@ -313,13 +313,19 @@ export async function deleteStudentAction(id: string): Promise<ActionResponse> {
 
   const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
-  const { error } = await admin
+  const { data: deleted, error } = await admin
     .from('students')
     .delete()
     .eq('id', id)
-    .eq('organization_id', orgId);
+    .eq('organization_id', orgId)
+    .select('id');
 
   if (error) return { success: false, error: error.message };
+  // Only deactivate a pass for a row this organization actually deleted. A Wallet failure must not undo the delete.
+  if (deleted?.length) {
+    const walletSync = await deactivateGoogleWalletObject(id);
+    if (walletSync.status === 'failed') console.warn('Google Wallet deactivation failed:', walletSync.error);
+  }
   revalidatePath('/students');
   return { success: true, data: undefined };
 }

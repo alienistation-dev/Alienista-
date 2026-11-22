@@ -63,18 +63,20 @@ function getWalletHeroUrl(): string | null {
   }
 }
 
+function walletObjectIds(studentId: string, config: GoogleWalletConfig) {
+  const classId = config.classId.includes('.')
+    ? config.classId
+    : `${config.issuerId}.${config.classId}`;
+  return { id: `${config.issuerId}.${studentId.replace(/[^a-zA-Z0-9_-]/g, '_')}`, classId };
+}
+
 export function createGoogleWalletObject(student: Student, config: GoogleWalletConfig, design: GoogleWalletDesign = 'builder') {
   const rawSection = student.section || '1';
   const sectionLabel = rawSection.toUpperCase().startsWith('BLOCK')
     ? rawSection.toUpperCase()
     : `BLOCK ${rawSection.toUpperCase()}`;
 
-  const fullClassId = config.classId.includes('.')
-    ? config.classId
-    : `${config.issuerId}.${config.classId}`;
-
-  const cleanStudentId = student.id.replace(/[^a-zA-Z0-9_-]/g, '_');
-  const fullObjectId = `${config.issuerId}.${cleanStudentId}`;
+  const { id: fullObjectId, classId: fullClassId } = walletObjectIds(student.id, config);
   const logoUrl = getWalletLogoUrl(student);
   const heroUrl = getWalletHeroUrl();
 
@@ -85,6 +87,8 @@ export function createGoogleWalletObject(student: Student, config: GoogleWalletC
   const object = {
     id: fullObjectId,
     classId: fullClassId,
+    // Inactive students must not keep a usable pass; every sync writes the current state.
+    state: student.status === 'Active' ? 'ACTIVE' : 'INACTIVE',
     cardTitle: { defaultValue: { language: 'en-US', value: cardTitle } },
     header: { defaultValue: { language: 'en-US', value: student.full_name } },
     subheader: { defaultValue: { language: 'en-US', value: subheader } },
@@ -129,14 +133,16 @@ export function createGoogleWalletObject(student: Student, config: GoogleWalletC
   return object;
 }
 
-export function createGoogleWalletJwtPayload(student: Student, config: GoogleWalletConfig, design: GoogleWalletDesign = 'builder') {
+// The object is created through the REST API first, so the save JWT carries only its id.
+// This keeps the URL short and keeps the student's name and number out of a forwardable link.
+export function createGoogleWalletJwtPayload(student: Pick<Student, 'id'>, config: GoogleWalletConfig) {
   return {
     iss: config.clientEmail,
     aud: 'google',
     origins: [config.appUrl].filter(Boolean),
     typ: 'savetowallet',
     iat: Math.floor(Date.now() / 1000),
-    payload: { genericObjects: [createGoogleWalletObject(student, config, design)] },
+    payload: { genericObjects: [walletObjectIds(student.id, config)] },
   };
 }
 
@@ -154,18 +160,13 @@ export function signGoogleWalletJwt(payload: object, privateKeyPem: string): str
   return `${signInput}.${signature}`;
 }
 
-export function generateGoogleWalletSaveUrl(student: Student, design: GoogleWalletDesign = 'builder'): string | null {
+function getWalletEnv(): { config: GoogleWalletConfig; privateKey: string } | null {
   const issuerId = process.env.GOOGLE_WALLET_ISSUER_ID;
   const classId = process.env.GOOGLE_WALLET_CLASS_ID;
   const clientEmail = process.env.GOOGLE_WALLET_CLIENT_EMAIL;
   const privateKey = process.env.GOOGLE_WALLET_PRIVATE_KEY;
-  const appUrl = getGoogleWalletAppUrl();
-
   if (!issuerId || !classId || !clientEmail || !privateKey) return null;
-
-  const payload = createGoogleWalletJwtPayload(student, { issuerId, classId, clientEmail, appUrl }, design);
-  const jwt = signGoogleWalletJwt(payload, privateKey);
-  return `https://pay.google.com/gp/v/save/${jwt}`;
+  return { config: { issuerId, classId, clientEmail, appUrl: getGoogleWalletAppUrl() }, privateKey };
 }
 
 function createServiceAccountAssertion(config: GoogleWalletConfig, privateKey: string): string {
@@ -205,31 +206,71 @@ export type GoogleWalletSyncResult =
   | { status: 'skipped' }
   | { status: 'failed'; error: string };
 
-export async function syncGoogleWalletObject(student: Student, design: GoogleWalletDesign = 'builder'): Promise<GoogleWalletSyncResult> {
-  const issuerId = process.env.GOOGLE_WALLET_ISSUER_ID;
-  const classId = process.env.GOOGLE_WALLET_CLASS_ID;
-  const clientEmail = process.env.GOOGLE_WALLET_CLIENT_EMAIL;
-  const privateKey = process.env.GOOGLE_WALLET_PRIVATE_KEY;
-  const appUrl = getGoogleWalletAppUrl();
-  if (!issuerId || !classId || !clientEmail || !privateKey) return { status: 'skipped' };
+export type GoogleWalletIssueResult =
+  | { status: 'issued'; url: string }
+  | { status: 'skipped' }
+  | { status: 'failed'; error: string };
+
+function walletRequest(url: string, method: 'POST' | 'PATCH', accessToken: string, body: object): Promise<Response> {
+  return fetch(url, {
+    method,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(3000),
+  });
+}
+
+function objectUrl(objectId: string): string {
+  return `${GENERIC_OBJECT_ENDPOINT}/${encodeURIComponent(objectId)}`;
+}
+
+async function patchWalletObject(objectId: string, body: object): Promise<GoogleWalletSyncResult> {
+  const env = getWalletEnv();
+  if (!env) return { status: 'skipped' };
 
   try {
-    const config = { issuerId, classId, clientEmail, appUrl };
-    const accessToken = await getWalletAccessToken(config, privateKey);
-    const object = createGoogleWalletObject(student, config, design);
-    const response = await fetch(`${GENERIC_OBJECT_ENDPOINT}/${encodeURIComponent(object.id)}`, {
-      method: 'PATCH',
-      headers: {
-        authorization: `Bearer ${accessToken}`,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify(object),
-      signal: AbortSignal.timeout(3000),
-    });
+    const accessToken = await getWalletAccessToken(env.config, env.privateKey);
+    const response = await walletRequest(objectUrl(objectId), 'PATCH', accessToken, body);
     if (response.status === 404) return { status: 'not_found' };
     if (!response.ok) return { status: 'failed', error: `Wallet object update failed (${response.status}).` };
     return { status: 'updated' };
   } catch (error: unknown) {
     return { status: 'failed', error: error instanceof Error ? error.message : 'Wallet object update failed.' };
+  }
+}
+
+export async function syncGoogleWalletObject(student: Student, design: GoogleWalletDesign = 'builder'): Promise<GoogleWalletSyncResult> {
+  const env = getWalletEnv();
+  if (!env) return { status: 'skipped' };
+  const object = createGoogleWalletObject(student, env.config, design);
+  return patchWalletObject(object.id, object);
+}
+
+// Used after a student is deleted, when no student row is left to build the full object from.
+export async function deactivateGoogleWalletObject(studentId: string): Promise<GoogleWalletSyncResult> {
+  const env = getWalletEnv();
+  if (!env) return { status: 'skipped' };
+  return patchWalletObject(walletObjectIds(studentId, env.config).id, { state: 'INACTIVE' });
+}
+
+export async function issueGoogleWalletSaveUrl(student: Student, design: GoogleWalletDesign = 'builder'): Promise<GoogleWalletIssueResult> {
+  const env = getWalletEnv();
+  if (!env) return { status: 'skipped' };
+
+  try {
+    const accessToken = await getWalletAccessToken(env.config, env.privateKey);
+    const object = createGoogleWalletObject(student, env.config, design);
+    let response = await walletRequest(GENERIC_OBJECT_ENDPOINT, 'POST', accessToken, object);
+    // 409 means the pass was issued before; refresh it so it shows current details and state.
+    if (response.status === 409) response = await walletRequest(objectUrl(object.id), 'PATCH', accessToken, object);
+    if (!response.ok) return { status: 'failed', error: `Wallet object save failed (${response.status}).` };
+
+    const jwt = signGoogleWalletJwt(createGoogleWalletJwtPayload(student, env.config), env.privateKey);
+    return { status: 'issued', url: `https://pay.google.com/gp/v/save/${jwt}` };
+  } catch (error: unknown) {
+    return { status: 'failed', error: error instanceof Error ? error.message : 'Wallet object save failed.' };
   }
 }

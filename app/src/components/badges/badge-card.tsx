@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
+import Image from 'next/image';
 import { Download, Loader2 } from 'lucide-react';
 import { buildBadgeData, buildBadgeFilename } from '@/lib/badges/badge';
 import type { BadgeStudent } from '@/lib/types/models';
@@ -8,14 +9,12 @@ import { getStudentGoogleWalletUrlAction } from '@/lib/actions/google-wallet';
 import { BadgeArtwork } from '@/components/badges/badge-artwork';
 import type { BadgeArtworkAssets } from '@/lib/badges/artwork';
 
-function GoogleWalletEmblem() {
+// Google's brand rules require their button artwork unmodified: public/add-to-google-wallet.svg is the
+// enUS "wallet-button" file from developers.google.com/static/wallet/download-assets/add-to-wallet-svg.zip.
+// Shown at 48px high (the minimum) with at least 8px clear space; do not restyle it.
+function GoogleWalletButtonArtwork() {
   return (
-    <svg className="w-6 h-5 shrink-0" viewBox="0 0 36 30" fill="none" aria-hidden="true">
-      <path d="M36 11.291H0V5.6456C0 2.5809 2.6422 0 5.7798 0H30.2202C33.3578 0 36 2.5809 36 5.6456V11.291Z" fill="#34A853" />
-      <path d="M36 16.5H0V10.5C0 7.2429 2.6422 4.5 5.7798 4.5H30.2202C33.3578 4.5 36 7.2429 36 10.5V16.5Z" fill="#FBBC04" />
-      <path d="M36 21.5H0V15.5C0 12.2429 2.6422 9.5 5.7798 9.5H30.2202C33.3578 9.5 36 12.2429 36 15.5V21.5Z" fill="#EA4335" />
-      <path d="M0 12.7409L22.8493 17.9025C25.4795 18.5477 28.4384 17.9025 30.5753 16.2895L36 12.4183V24.5157C36 27.5804 33.3699 30 30.2466 30H5.7534C2.6301 30 0 27.5804 0 24.5157V12.7409Z" fill="#4285F4" />
-    </svg>
+    <Image src="/add-to-google-wallet.svg" alt="Add to Google Wallet" width={283} height={50} unoptimized className="h-12 w-auto" />
   );
 }
 
@@ -31,22 +30,20 @@ export function BadgeCard({
   showWalletButton?: boolean;
 }) {
   const badge = useMemo(() => buildBadgeData(student), [student]);
-  const [badgeDataUrl, setBadgeDataUrl] = useState('');
   const [artworkAssets, setArtworkAssets] = useState<BadgeArtworkAssets>({ qrDataUrl: null, avatarDataUrl: null });
   const [renderError, setRenderError] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Show the QR as soon as it is drawn. The preview uses the avatar URL directly; the avatar fetch
+  // and PNG export run only when the user downloads.
   useEffect(() => {
     let active = true;
     import('@/lib/badges/render-badge')
-      .then(async ({ buildBadgeArtworkAssets, renderBadgeToDataUrl }) => {
-        const assets = await buildBadgeArtworkAssets(badge);
-        const url = await renderBadgeToDataUrl(badge, assets);
-        if (active) {
-          setArtworkAssets(assets);
-          setBadgeDataUrl(url);
-        }
+      .then(({ buildBadgeArtworkAssets }) => buildBadgeArtworkAssets({ ...badge, avatar_url: null }))
+      .then((assets) => {
+        if (active) setArtworkAssets({ qrDataUrl: assets.qrDataUrl, avatarDataUrl: badge.avatar_url });
       })
       .catch(() => {
         if (active) setRenderError(true);
@@ -56,12 +53,20 @@ export function BadgeCard({
     };
   }, [badge]);
 
-  const handleDownload = () => {
-    if (!badgeDataUrl) return;
-    const link = document.createElement('a');
-    link.download = buildBadgeFilename(badge);
-    link.href = badgeDataUrl;
-    link.click();
+  const handleDownload = async () => {
+    setErrorMessage(null);
+    setIsExporting(true);
+    try {
+      const { renderBadgeToDataUrl } = await import('@/lib/badges/render-badge');
+      const link = document.createElement('a');
+      link.download = buildBadgeFilename(badge);
+      link.href = await renderBadgeToDataUrl(badge);
+      link.click();
+    } catch {
+      setErrorMessage('Badge PNG export failed. Reload and try again.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleDynamicWalletClick = () => {
@@ -71,7 +76,11 @@ export function BadgeCard({
         const res = await getStudentGoogleWalletUrlAction(student.id);
         if (res.success) {
           if (res.data?.url) {
-            window.open(res.data.url, '_blank', 'noopener,noreferrer');
+            // Mobile browsers may block a popup opened after an await. 'noopener' would make
+            // window.open return null even on success, so detect the block and cut the opener by hand.
+            const opened = window.open(res.data.url, '_blank');
+            if (opened) opened.opener = null;
+            else window.location.assign(res.data.url);
             if (res.message) setErrorMessage(res.message);
           } else {
             setErrorMessage('Google Wallet pass URL was not returned.');
@@ -99,48 +108,44 @@ export function BadgeCard({
           {showDownload && (
             <button
               onClick={handleDownload}
-              disabled={!badgeDataUrl}
+              disabled={isExporting}
               className="w-full py-2.5 bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold rounded-lg text-xs flex items-center justify-center gap-2 transition-colors shadow-xs disabled:opacity-40 cursor-pointer"
             >
-              <Download className="w-4 h-4" />
+              {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
               <span>Download Badge PNG</span>
             </button>
           )}
 
           {walletSaveUrl ? (
-            <a
-              href={walletSaveUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Add to Google Wallet"
-              className="w-full h-12 bg-[#1F1F1F] hover:bg-[#2F2F2F] active:bg-[#000000] text-white font-medium rounded-full text-xs sm:text-sm flex items-center justify-center gap-3 transition-all shadow-sm border border-black/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1F1F1F]"
-            >
-              <GoogleWalletEmblem />
-              <span>Add to Google Wallet</span>
-            </a>
+            <div className="flex justify-center p-2">
+              <a href={walletSaveUrl} target="_blank" rel="noopener noreferrer" className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#1F1F1F]">
+                <GoogleWalletButtonArtwork />
+              </a>
+            </div>
           ) : shouldShowWallet ? (
-            <div>
+            <div className="flex flex-col items-center p-2">
               <button
                 type="button"
                 onClick={handleDynamicWalletClick}
                 disabled={isPending}
-                aria-label="Add to Google Wallet"
-                className="w-full h-12 bg-[#1F1F1F] hover:bg-[#2F2F2F] active:bg-[#000000] text-white font-medium rounded-full text-xs sm:text-sm flex items-center justify-center gap-3 transition-all shadow-sm border border-black/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1F1F1F] disabled:opacity-60 cursor-pointer"
+                aria-busy={isPending}
+                className="rounded-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#1F1F1F]"
               >
-                {isPending ? (
-                  <Loader2 className="w-5 h-5 animate-spin shrink-0 text-white" />
-                ) : (
-                  <GoogleWalletEmblem />
-                )}
-                <span>{isPending ? 'Adding to Google Wallet...' : 'Add to Google Wallet'}</span>
+                <GoogleWalletButtonArtwork />
               </button>
-              {errorMessage && (
-                <p className="mt-2 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 text-center">
-                  {errorMessage}
+              {isPending && (
+                <p role="status" className="mt-2 flex items-center gap-1.5 text-xs text-[#4B5563]">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Creating your Google Wallet pass...
                 </p>
               )}
             </div>
           ) : null}
+
+          {errorMessage && (
+            <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 text-center">
+              {errorMessage}
+            </p>
+          )}
         </div>
       )}
     </div>

@@ -4,7 +4,7 @@ import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/session';
 import { ActionResponse } from '@/lib/types/actions';
 import { Student } from '@/lib/types/models';
-import { generateGoogleWalletSaveUrl, syncGoogleWalletObject } from '@/lib/badges/google-wallet';
+import { issueGoogleWalletSaveUrl } from '@/lib/badges/google-wallet';
 
 export async function getStudentGoogleWalletUrlAction(studentId?: string): Promise<ActionResponse<{ url: string }>> {
   const user = await getSessionUser();
@@ -18,11 +18,14 @@ export async function getStudentGoogleWalletUrlAction(studentId?: string): Promi
     return { success: false, error: 'Google Wallet pass feature is disabled.' };
   }
 
-  const { data: settings } = await admin
+  const { data: settings, error: settingsError } = await admin
     .from('organization_settings')
     .select('google_wallet_enabled, google_wallet_design')
     .eq('organization_id', orgId)
     .maybeSingle();
+
+  // Fail closed: without settings we cannot tell whether the admin turned Wallet off.
+  if (settingsError) return { success: false, error: 'Google Wallet settings could not be read. Try again.' };
 
   if (settings && !settings.google_wallet_enabled && user.role !== 'admin') {
     return { success: false, error: 'Google Wallet pass generation is currently turned off by admin.' };
@@ -40,14 +43,15 @@ export async function getStudentGoogleWalletUrlAction(studentId?: string): Promi
   if (error || !student) return { success: false, error: 'Student record not found.' };
 
   const typedStudent = student as Student;
-  const design = settings?.google_wallet_design === 'legacy' ? 'legacy' : 'builder';
-  const sync = await syncGoogleWalletObject(typedStudent, design);
-  const url = generateGoogleWalletSaveUrl(typedStudent, design);
-  if (!url) return { success: false, error: 'Google Wallet server credentials not configured.' };
+  if (typedStudent.status !== 'Active') return { success: false, error: 'Only active students can add a Google Wallet pass.' };
 
-  return {
-    success: true,
-    data: { url },
-    message: sync.status === 'failed' ? 'Wallet save link generated; existing pass refresh is temporarily unavailable.' : undefined,
-  };
+  const design = settings?.google_wallet_design === 'legacy' ? 'legacy' : 'builder';
+  const issued = await issueGoogleWalletSaveUrl(typedStudent, design);
+  if (issued.status === 'skipped') return { success: false, error: 'Google Wallet server credentials not configured.' };
+  if (issued.status === 'failed') {
+    console.warn('Google Wallet pass issuance failed:', issued.error);
+    return { success: false, error: 'Google Wallet pass could not be created. Try again later.' };
+  }
+
+  return { success: true, data: { url: issued.url } };
 }

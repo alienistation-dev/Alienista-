@@ -3,6 +3,8 @@ import crypto from 'node:crypto';
 import {
   createGoogleWalletJwtPayload,
   createGoogleWalletObject,
+  deactivateGoogleWalletObject,
+  issueGoogleWalletSaveUrl,
   signGoogleWalletJwt,
   syncGoogleWalletObject,
 } from '@/lib/badges/google-wallet';
@@ -38,8 +40,13 @@ describe('Google Wallet Pass Generation', () => {
     expect(payload.iss).toBe(mockConfig.clientEmail);
     expect(payload.typ).toBe('savetowallet');
     expect(payload.iat).toEqual(expect.any(Number));
+    // The save JWT references the object by id only; the API holds the details.
+    expect(payload.payload.genericObjects).toEqual([
+      { id: `${mockConfig.issuerId}.${mockStudent.id}`, classId: `${mockConfig.issuerId}.${mockConfig.classId}` },
+    ]);
 
-    const genericObject = payload.payload.genericObjects[0];
+    const genericObject = createGoogleWalletObject(mockStudent, mockConfig);
+    expect(genericObject.state).toBe('ACTIVE');
     expect(genericObject.id).toBe(`${mockConfig.issuerId}.${mockStudent.id}`);
     expect(genericObject.classId).toBe(`${mockConfig.issuerId}.${mockConfig.classId}`);
     expect(genericObject.barcode).toEqual({
@@ -170,5 +177,85 @@ describe('Google Wallet Pass Generation', () => {
       barcode: { value: mockStudent.uid },
       imageModulesData: [],
     });
+  });
+
+  function setWalletEnv() {
+    const { privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+    process.env.GOOGLE_WALLET_ISSUER_ID = mockConfig.issuerId;
+    process.env.GOOGLE_WALLET_CLASS_ID = mockConfig.classId;
+    process.env.GOOGLE_WALLET_CLIENT_EMAIL = mockConfig.clientEmail;
+    process.env.GOOGLE_WALLET_PRIVATE_KEY = privateKey.export({ type: 'pkcs8', format: 'pem' }) as string;
+  }
+
+  function decodeSavePayload(url: string) {
+    const jwt = url.replace('https://pay.google.com/gp/v/save/', '');
+    return Buffer.from(jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+  }
+
+  it('marks a non-Active student object INACTIVE so profile sync deactivates the pass', async () => {
+    setWalletEnv();
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'access-token' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await syncGoogleWalletObject({ ...mockStudent, status: 'Inactive' });
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).state).toBe('INACTIVE');
+  });
+
+  it('inserts the object by API and returns a short ID-only save URL without student details', async () => {
+    setWalletEnv();
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'access-token' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await issueGoogleWalletSaveUrl(mockStudent);
+    expect(result.status).toBe('issued');
+    if (result.status !== 'issued') return;
+    expect(fetchMock.mock.calls[1][0]).toBe('https://walletobjects.googleapis.com/walletobjects/v1/genericObject');
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({ method: 'POST' });
+    expect(result.url.length).toBeLessThan(1800);
+    const decoded = decodeSavePayload(result.url);
+    expect(decoded).not.toContain(mockStudent.full_name);
+    expect(decoded).not.toContain(mockStudent.student_number);
+    expect(decoded).not.toContain(mockStudent.uid);
+    expect(JSON.parse(decoded).payload).toEqual({
+      genericObjects: [{ id: `${mockConfig.issuerId}.${mockStudent.id}`, classId: `${mockConfig.issuerId}.${mockConfig.classId}` }],
+    });
+  });
+
+  it('patches the existing object when insert returns 409 conflict', async () => {
+    setWalletEnv();
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'access-token' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response('{}', { status: 409 }))
+      .mockResolvedValueOnce(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(issueGoogleWalletSaveUrl(mockStudent)).resolves.toMatchObject({ status: 'issued' });
+    expect(fetchMock.mock.calls[2][0]).toContain(encodeURIComponent(`${mockConfig.issuerId}.${mockStudent.id}`));
+    expect(fetchMock.mock.calls[2][1]).toMatchObject({ method: 'PATCH' });
+  });
+
+  it('returns no save URL when the object cannot be saved', async () => {
+    setWalletEnv();
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'access-token' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response('{}', { status: 500 })));
+
+    await expect(issueGoogleWalletSaveUrl(mockStudent)).resolves.toEqual({ status: 'failed', error: 'Wallet object save failed (500).' });
+  });
+
+  it('sets only the object state to INACTIVE when deactivating a pass', async () => {
+    setWalletEnv();
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'access-token' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(deactivateGoogleWalletObject(mockStudent.id)).resolves.toEqual({ status: 'updated' });
+    expect(fetchMock.mock.calls[1][0]).toContain(encodeURIComponent(`${mockConfig.issuerId}.${mockStudent.id}`));
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({ method: 'PATCH', body: JSON.stringify({ state: 'INACTIVE' }) });
   });
 });
