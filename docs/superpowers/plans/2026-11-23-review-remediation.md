@@ -5,6 +5,28 @@ This file holds the order, status and research. Update it in place; history stay
 
 Status words: **Done** (committed, tests pass), **In progress**, **Planned**, **Blocked** (needs the owner).
 
+## Checklist
+
+Code (details in Phases below):
+- [x] 1. Database and secrets
+- [x] 2. Access control
+- [x] 3. Speed, part 1 (browser check still open)
+- [x] 4. Offline shell
+- [x] 5. Offline replay
+- [ ] 6. Wallet lifecycle: official button, ID-only save link, pass state on deactivation
+- [ ] 7. UI tokens and ACS colours
+- [ ] 8. Speed, part 2: region, remaining reloads, login latency, badge wait
+- [ ] 9. Screen-by-screen UI and Wallet UI review
+
+Owner:
+- [ ] Rotate `SESSION_SECRET` in Vercel Production (before deploying)
+- [ ] Repair and push migrations (`migration list --linked`, `repair` if needed, `db push`)
+- [ ] Set Vercel function region to `syd1`
+- [ ] Approve merge of `feat/sprint-reconcile` to `main` and deploy
+
+Parked:
+- [ ] My Clearance (needs CSG consent and an owner decision)
+
 ## Research used (read 2026-11-22/23)
 
 | Topic | Source | What it decided |
