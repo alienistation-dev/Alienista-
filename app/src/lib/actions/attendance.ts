@@ -2,7 +2,7 @@
 
 import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
 import { getSessionUser } from '@/lib/session';
-import { ActionResponse } from '@/lib/types/actions';
+import { ActionResponse, SessionUser } from '@/lib/types/actions';
 import { requireRole } from '@/lib/auth/guards';
 import { evaluateAttendanceStatus } from '@/lib/attendance/status';
 import { AttendanceStatus } from '@/lib/types/models';
@@ -33,7 +33,13 @@ interface RecordedScan {
 
 interface BulkScanInput extends ScanInput {
   client_id: string;
+  officer_id?: string | null;
 }
+
+// Replayed capture times are client clocks: allow small skew, refuse stale or future scans.
+const MAX_CLOCK_SKEW_MS = 2 * 60 * 1000;
+const MAX_REPLAY_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface SyncScanResult {
   client_id: string;
@@ -51,39 +57,81 @@ export async function recordScanAction(input: ScanInput): Promise<ActionResponse
     return { success: false, error: 'Unauthorized.' };
   }
 
+  // Live scans are timed and attributed by the server; client timestamp/officer fields are ignored.
+  return recordScan(user, input, false);
+}
+
+async function recordScan(
+  user: SessionUser,
+  input: ScanInput & { officer_id?: string | null },
+  replay: boolean
+): Promise<ActionResponse<RecordedScan>> {
+  const now = new Date();
+  let scanTime = now;
+  if (replay) {
+    scanTime = new Date(input.timestamp ?? '');
+    const ageMs = now.getTime() - scanTime.getTime();
+    if (!Number.isFinite(ageMs)) return { success: false, error: 'Invalid scan timestamp.', code: 'INVALID_TIMESTAMP' };
+    if (ageMs < -MAX_CLOCK_SKEW_MS) return { success: false, error: 'Scan timestamp is in the future.', code: 'INVALID_TIMESTAMP' };
+    if (ageMs > MAX_REPLAY_AGE_MS) return { success: false, error: 'Scan is too old to sync.', code: 'INVALID_TIMESTAMP' };
+  }
+
   const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
-  const scanTime = input.timestamp ? new Date(input.timestamp) : new Date();
-  if (!Number.isFinite(scanTime.getTime())) return { success: false, error: 'Invalid scan timestamp.', code: 'INVALID_TIMESTAMP' };
+
+  // Replays keep the capturing officer only if the session's org lists them as Active; else the session user.
+  let officerId = user.role === 'officer' ? user.id : null;
+  let officerName = user.name;
+  if (replay && input.officer_id && input.officer_id !== user.id && UUID_REGEX.test(input.officer_id)) {
+    const { data: officer, error: officerErr } = await admin
+      .from('officers')
+      .select('id, name')
+      .eq('id', input.officer_id)
+      .eq('organization_id', orgId)
+      .eq('status', 'Active')
+      .maybeSingle();
+    if (officerErr) return { success: false, error: 'Could not look up the scanning officer. Retry shortly.', code: 'SERVER_ERROR' };
+    if (officer) {
+      officerId = officer.id;
+      officerName = officer.name;
+    }
+  }
 
   // 1. Resolve student
-  const { data: student } = await admin
+  // Lookup errors are transient (SERVER_ERROR is retryable); only an empty result means the record is missing.
+  const { data: student, error: studentErr } = await admin
     .from('students')
     .select('id, full_name, status')
     .eq('uid', input.student_uid.trim())
     .eq('organization_id', orgId)
-    .single();
+    .maybeSingle();
 
+  if (studentErr) return { success: false, error: 'Could not look up the student. Retry shortly.', code: 'SERVER_ERROR' };
   if (!student) return { success: false, error: 'Student UID not found.', code: 'STUDENT_NOT_FOUND' };
   if (student.status !== 'Active') return { success: false, error: 'Student account is inactive.', code: 'STUDENT_INACTIVE' };
 
   // 2. Resolve event & slots
-  const { data: event } = await admin
+  const { data: event, error: eventErr } = await admin
     .from('events')
     .select('id, name, status, slots:event_slots(*)')
     .eq('id', input.event_id)
     .eq('organization_id', orgId)
-    .single();
+    .maybeSingle();
 
+  if (eventErr) return { success: false, error: 'Could not look up the event. Retry shortly.', code: 'SERVER_ERROR' };
   if (!event) return { success: false, error: 'Event not found.', code: 'EVENT_NOT_FOUND' };
-  if (event.status !== 'Open') return { success: false, error: 'Event is closed for attendance.', code: 'EVENT_CLOSED' };
+  // A replay into a since-closed event is judged by its slot window at capture time below.
+  const hasSlots = Boolean(event.slots && event.slots.length > 0);
+  if (event.status !== 'Open' && !(replay && hasSlots)) {
+    return { success: false, error: 'Event is closed for attendance.', code: 'EVENT_CLOSED' };
+  }
 
   // 3. Validate slot window if event has slots
   let activeSlotId = input.slot_id || null;
   let attendanceStatus: AttendanceStatus = 'on_time';
   let effectiveScanTime = scanTime.toISOString();
   let latePenaltyPercent = 0;
-  if (event.slots && event.slots.length > 0) {
+  if (hasSlots) {
     const slots = event.slots as AttendanceSlotRow[];
     const validSlot = slots.find((slot) => {
       if (input.slot_id && slot.id !== input.slot_id) return false;
@@ -115,8 +163,9 @@ export async function recordScanAction(input: ScanInput): Promise<ActionResponse
     query = query.is('slot_id', null);
   }
 
-  const { data: existing } = await query.maybeSingle();
+  const { data: existing, error: existingErr } = await query.maybeSingle();
 
+  if (existingErr) return { success: false, error: 'Could not check for duplicates. Retry shortly.', code: 'SERVER_ERROR' };
   if (existing) {
     return { success: false, error: 'Already scanned for this session.', code: 'DUPLICATE' };
   }
@@ -127,8 +176,8 @@ export async function recordScanAction(input: ScanInput): Promise<ActionResponse
     student_id: student.id,
     event_id: event.id,
     slot_id: activeSlotId,
-    officer_id: user.role === 'officer' ? user.id : null,
-    officer_name: user.name,
+    officer_id: officerId,
+    officer_name: officerName,
     client_id: input.client_id || null,
     recorded_at: scanTime.toISOString(),
     effective_scan_time: effectiveScanTime,
@@ -157,8 +206,9 @@ export async function recordScanAction(input: ScanInput): Promise<ActionResponse
 
 export async function bulkSyncScansAction(scans: BulkScanInput[]): Promise<ActionResponse<SyncScanResult[]>> {
   // Auth guard at the bulk entry point — defence-in-depth
+  let user;
   try {
-    await requireRole('admin', 'officer');
+    user = await requireRole('admin', 'officer');
   } catch {
     return { success: false, error: 'Unauthorized.' };
   }
@@ -170,7 +220,7 @@ export async function bulkSyncScansAction(scans: BulkScanInput[]): Promise<Actio
     const batch = scans.slice(i, i + BATCH_SIZE);
     const batchResults = await Promise.all(
       batch.map(async (scan) => {
-        const res = await recordScanAction(scan);
+        const res = await recordScan(user, scan, true);
         return {
           client_id: scan.client_id,
           success: res.success,
