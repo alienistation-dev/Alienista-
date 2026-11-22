@@ -51,13 +51,13 @@ export function DeviceLogView({ organizationId }: { organizationId: string }) {
   return (
     <div className="space-y-6">
       {/* Header Toolbar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white border border-[#E5EBE5] rounded-2xl p-4 shadow-xs">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white border border-border rounded-2xl p-4 shadow-xs">
         <div>
           <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
-            <Smartphone className="w-4 h-4 text-[#2D6A4F]" />
+            <Smartphone className="w-4 h-4 text-primary" />
             <span>Local Device Audit Trail</span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             Permanent hardware record of all scans taken on this browser ({logs.length} logged).
           </p>
         </div>
@@ -66,7 +66,7 @@ export function DeviceLogView({ organizationId }: { organizationId: string }) {
           <button
             onClick={handleExportCsv}
             disabled={logs.length === 0}
-            className="px-3.5 py-1.5 bg-[#F8FAF9] border border-[#E5EBE5] hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-700 flex items-center gap-1.5 transition-colors disabled:opacity-40"
+            className="px-3.5 py-1.5 bg-muted border border-border hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-700 flex items-center gap-1.5 transition-colors disabled:opacity-40"
           >
             <Download className="w-3.5 h-3.5 text-slate-500" />
             <span>Export CSV</span>
@@ -83,19 +83,19 @@ export function DeviceLogView({ organizationId }: { organizationId: string }) {
       </div>
 
       {/* Log Table */}
-      <div className="bg-white border border-[#E5EBE5] rounded-3xl overflow-hidden shadow-xs">
+      <div className="bg-white border border-border rounded-3xl overflow-hidden shadow-xs">
         <table className="w-full text-left text-xs">
-          <thead className="bg-[#F8FAF9] text-slate-600 border-b border-[#E5EBE5]">
+          <thead className="bg-muted text-slate-600 border-b border-border">
             <tr>
-              <th className="py-3.5 px-4 font-bold uppercase text-[10px] text-[#2D6A4F]">Student UID</th>
-              <th className="py-3.5 px-4 font-bold uppercase text-[10px]">Name</th>
-              <th className="py-3.5 px-4 font-bold uppercase text-[10px]">Event</th>
-              <th className="py-3.5 px-4 font-bold uppercase text-[10px]">Officer</th>
-              <th className="py-3.5 px-4 font-bold uppercase text-[10px]">Time</th>
-              <th className="py-3.5 px-4 font-bold uppercase text-[10px] text-right">Sync Status</th>
+              <th className="py-3.5 px-4 font-bold uppercase text-xs text-primary">Student UID</th>
+              <th className="py-3.5 px-4 font-bold uppercase text-xs">Name</th>
+              <th className="py-3.5 px-4 font-bold uppercase text-xs">Event</th>
+              <th className="py-3.5 px-4 font-bold uppercase text-xs">Officer</th>
+              <th className="py-3.5 px-4 font-bold uppercase text-xs">Time</th>
+              <th className="py-3.5 px-4 font-bold uppercase text-xs text-right">Sync Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#E5EBE5] text-slate-700">
+          <tbody className="divide-y divide-border text-slate-700">
             {loading ? (
               <tr>
                 <td colSpan={6} className="py-8 text-center text-muted-foreground">
@@ -114,17 +114,17 @@ export function DeviceLogView({ organizationId }: { organizationId: string }) {
                 const timeStr = `${dt.toLocaleDateString([], { month: 'short', day: 'numeric' })} · ${dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 
                 return (
-                  <tr key={i} className="hover:bg-[#F8FAF9]">
-                    <td className="py-3 px-4 font-mono font-bold text-[#1B4332]">{l.student_uid}</td>
+                  <tr key={i} className="hover:bg-muted">
+                    <td className="py-3 px-4 font-mono font-bold text-primary">{l.student_uid}</td>
                     <td className="py-3 px-4 font-bold text-slate-900">{l.student_name}</td>
                     <td className="py-3 px-4 text-slate-600">{l.event_name}</td>
                     <td className="py-3 px-4 text-slate-600">{l.officer}</td>
-                    <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground">{timeStr}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{timeStr}</td>
                     <td className="py-3 px-4 text-right">
                       <span
-                        className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                        className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${
                           l.sync_status === 'synced'
-                            ? 'bg-[#EBF5EE] text-[#1B4332] border border-[#C2E0CC]'
+                            ? 'bg-secondary text-secondary-foreground border border-primary/25'
                             : l.sync_status === 'pending_offline'
                             ? 'bg-sky-50 text-sky-800 border border-sky-200'
                             : l.sync_status === 'duplicate'

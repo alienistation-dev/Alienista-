@@ -61,9 +61,9 @@ export function ManualOverrideDialog({ students, events, isOpen, onClose, onSucc
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-      <div className="bg-white border border-[#E5EBE5] rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
-        <div className="flex items-center gap-2 text-[#1B4332] font-bold text-base">
-          <UserCheck className="w-5 h-5 text-[#2D6A4F]" />
+      <div className="bg-white border border-border rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+        <div className="flex items-center gap-2 text-primary font-bold text-base">
+          <UserCheck className="w-5 h-5 text-primary" />
           <span>Manual Attendance Entry</span>
         </div>
         <p className="text-xs text-slate-500">
@@ -83,7 +83,7 @@ export function ManualOverrideDialog({ students, events, isOpen, onClose, onSucc
             <select
               value={selectedEventId}
               onChange={(e) => setSelectedEventId(e.target.value)}
-              className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900"
+              className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-xs text-slate-900"
             >
               {events.map((ev) => (
                 <option key={ev.id} value={ev.id}>
@@ -100,7 +100,7 @@ export function ManualOverrideDialog({ students, events, isOpen, onClose, onSucc
               <select
                 value={selectedSlotId}
                 onChange={(e) => setSelectedSlotId(e.target.value)}
-                className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900"
+                className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-xs text-slate-900"
               >
                 <option value="">Default / General</option>
                 {currentEvent.slots.map((s) => (
@@ -122,10 +122,10 @@ export function ManualOverrideDialog({ students, events, isOpen, onClose, onSucc
                 placeholder="Search student..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-900"
+                className="w-full bg-muted border border-border rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-900"
               />
             </div>
-            <div className="max-h-40 overflow-y-auto space-y-1 pr-1 border border-[#E5EBE5] rounded-xl p-1 bg-[#F8FAF9]">
+            <div className="max-h-40 overflow-y-auto space-y-1 pr-1 border border-border rounded-xl p-1 bg-muted">
               {filteredStudents.slice(0, 20).map((st) => (
                 <button
                   key={st.id}
@@ -133,12 +133,12 @@ export function ManualOverrideDialog({ students, events, isOpen, onClose, onSucc
                   onClick={() => setSelectedStudentId(st.id)}
                   className={`w-full text-left p-2 rounded-lg text-xs flex items-center justify-between transition-colors ${
                     selectedStudentId === st.id
-                      ? 'bg-[#EBF5EE] text-[#1B4332] font-bold border border-[#C2E0CC]'
+                      ? 'bg-secondary text-secondary-foreground font-bold border border-primary/25'
                       : 'text-slate-700 hover:bg-white'
                   }`}
                 >
                   <span className="font-medium">{st.full_name}</span>
-                  <span className="font-mono text-[10px] text-slate-500">{st.uid}</span>
+                  <span className="font-mono text-xs text-slate-500">{st.uid}</span>
                 </button>
               ))}
             </div>
@@ -155,7 +155,7 @@ export function ManualOverrideDialog({ students, events, isOpen, onClose, onSucc
             <button
               type="submit"
               disabled={isPending || !selectedStudentId}
-              className="px-4 py-2 rounded-xl bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold text-xs transition-colors disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs transition-colors disabled:opacity-50"
             >
               {isPending ? 'Recording...' : 'Record Attendance'}
             </button>

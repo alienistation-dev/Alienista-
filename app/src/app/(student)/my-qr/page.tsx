@@ -27,7 +27,7 @@ export default async function MyQrPage() {
 
   if (!student) {
     return (
-      <div className="p-8 bg-white border border-[#E5EBE5] rounded-3xl text-center text-xs text-slate-500 shadow-xs">
+      <div className="p-8 bg-white border border-border rounded-3xl text-center text-xs text-slate-500 shadow-xs">
         Student record not found. Please contact an officer or administrator.
       </div>
     );
@@ -40,7 +40,7 @@ export default async function MyQrPage() {
   return (
     <div className="space-y-6 text-center">
       <div>
-        <h1 className="text-xl font-extrabold text-[#1B4332] tracking-tight">My Membership Badge</h1>
+        <h1 className="text-xl font-extrabold text-primary tracking-tight">My Membership Badge</h1>
         <p className="text-xs text-slate-500 mt-1">Present this QR code to the officer during event attendance.</p>
       </div>
 

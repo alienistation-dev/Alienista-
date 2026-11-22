@@ -31,5 +31,5 @@ export function NavigationMetrics() {
     return () => window.clearTimeout(clearTimer);
   }, [pathname]);
 
-  return pending ? <div className="fixed inset-x-0 top-0 z-[70] h-0.5 overflow-hidden bg-[#D8EBDD]" role="status" aria-label="Loading page"><div className="h-full w-1/3 animate-[navigation-progress_1s_ease-in-out_infinite] bg-[#2D6A4F]" /></div> : null;
+  return pending ? <div className="fixed inset-x-0 top-0 z-[70] h-0.5 overflow-hidden bg-secondary" role="status" aria-label="Loading page"><div className="h-full w-1/3 animate-[navigation-progress_1s_ease-in-out_infinite] bg-primary" /></div> : null;
 }

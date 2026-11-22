@@ -368,7 +368,7 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
         <div
           className={`p-3 rounded-2xl text-xs font-semibold border ${
             toast.type === 'ok'
-              ? 'bg-[#EBF5EE] border-[#C2E0CC] text-[#1B4332]'
+              ? 'bg-secondary border-primary/25 text-secondary-foreground'
               : 'bg-red-50 border-red-200 text-red-700'
           }`}
         >
@@ -389,7 +389,7 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
                 setPage(1);
               }}
               placeholder="Search name, UID, or student no..."
-              className="w-full bg-white border border-[#E5EBE5] rounded-xl pl-9 pr-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#2D6A4F]"
+              className="w-full bg-white border border-border rounded-xl pl-9 pr-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-primary"
             />
           </div>
 
@@ -399,7 +399,7 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
               setYearFilter(e.target.value);
               setPage(1);
             }}
-            className="bg-white border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-700 font-medium focus:outline-none"
+            className="bg-white border border-border rounded-xl px-3 py-2 text-xs text-slate-700 font-medium focus:outline-none"
           >
             <option value="All">All Years</option>
             {YEARS.map((y) => (
@@ -413,7 +413,7 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
               setStatusFilter(e.target.value);
               setPage(1);
             }}
-            className="bg-white border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-700 font-medium focus:outline-none"
+            className="bg-white border border-border rounded-xl px-3 py-2 text-xs text-slate-700 font-medium focus:outline-none"
           >
             <option value="All">All Status</option>
             <option value="Active">Active</option>
@@ -424,14 +424,14 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
         <div className="flex items-center gap-2">
           {userRole === 'admin' && (
             <>
-              <label className="bg-white border border-[#E5EBE5] hover:border-slate-300 text-slate-700 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer flex items-center gap-1.5 transition-colors shadow-xs">
-                <Upload className="w-3.5 h-3.5 text-[#2D6A4F]" />
+              <label className="bg-white border border-border hover:border-slate-300 text-slate-700 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer flex items-center gap-1.5 transition-colors shadow-xs">
+                <Upload className="w-3.5 h-3.5 text-primary" />
                 <span className="hidden sm:inline">Import CSV</span>
                 <input type="file" accept=".csv" onChange={handleImportCsv} className="hidden" />
               </label>
               <button
                 onClick={handleOpenAdd}
-                className="bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-colors shadow-xs"
+                className="bg-primary hover:bg-primary/90 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-colors shadow-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Student</span>
@@ -440,7 +440,7 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
           )}
           <button
             onClick={handleExportCsv}
-            className="bg-white border border-[#E5EBE5] hover:border-slate-300 text-slate-700 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
+            className="bg-white border border-border hover:border-slate-300 text-slate-700 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
           >
             <Download className="w-3.5 h-3.5 text-slate-500" />
             <span className="hidden sm:inline">Export</span>
@@ -449,19 +449,19 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
       </div>
 
       {/* Desktop Table View */}
-      <div className="hidden md:block bg-white border border-[#E5EBE5] rounded-2xl overflow-hidden shadow-xs">
+      <div className="hidden md:block bg-white border border-border rounded-2xl overflow-hidden shadow-xs">
         <table className="w-full text-left text-xs">
-          <thead className="bg-[#F8FAF9] text-slate-600 border-b border-[#E5EBE5]">
+          <thead className="bg-muted text-slate-600 border-b border-border">
             <tr>
-              <th className="py-3.5 px-4 font-bold uppercase text-[10px] tracking-wider text-[#2D6A4F]">UID</th>
-              <th className="py-3.5 px-4 font-bold uppercase text-[10px] tracking-wider">Student No.</th>
-              <th className="py-3.5 px-4 font-bold uppercase text-[10px] tracking-wider">Full Name</th>
-              <th className="py-3.5 px-4 font-bold uppercase text-[10px] tracking-wider">Year & Block</th>
-              <th className="py-3.5 px-4 font-bold uppercase text-[10px] tracking-wider">Status</th>
-              {userRole === 'admin' && <th className="py-3.5 px-4 font-bold uppercase text-[10px] tracking-wider text-right">Actions</th>}
+              <th className="py-3.5 px-4 font-bold uppercase text-xs tracking-wider text-primary">UID</th>
+              <th className="py-3.5 px-4 font-bold uppercase text-xs tracking-wider">Student No.</th>
+              <th className="py-3.5 px-4 font-bold uppercase text-xs tracking-wider">Full Name</th>
+              <th className="py-3.5 px-4 font-bold uppercase text-xs tracking-wider">Year & Block</th>
+              <th className="py-3.5 px-4 font-bold uppercase text-xs tracking-wider">Status</th>
+              {userRole === 'admin' && <th className="py-3.5 px-4 font-bold uppercase text-xs tracking-wider text-right">Actions</th>}
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#E5EBE5]">
+          <tbody className="divide-y divide-border">
             {students.length === 0 ? (
               <tr>
                 <td colSpan={6} className="py-8 text-center text-muted-foreground">
@@ -470,8 +470,8 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
               </tr>
             ) : (
               students.map((st) => (
-                <tr key={st.id} className="hover:bg-[#F8FAF9] transition-colors">
-                  <td className="py-3 px-4 font-mono font-bold text-[#1B4332]">{st.uid}</td>
+                <tr key={st.id} className="hover:bg-muted transition-colors">
+                  <td className="py-3 px-4 font-mono font-bold text-primary">{st.uid}</td>
                   <td className="py-3 px-4 font-mono text-slate-600">{st.student_number}</td>
                   <td className="py-3 px-4 font-bold text-slate-900">
                     <div className="flex items-center gap-2.5">
@@ -479,10 +479,10 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
                         <img
                           src={st.avatar_url}
                           alt={st.full_name}
-                          className="w-8 h-8 rounded-full object-cover border border-[#2D6A4F]/20 shadow-2xs shrink-0"
+                          className="w-8 h-8 rounded-full object-cover border border-primary/20 shadow-2xs shrink-0"
                         />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-[#EBF5EE] text-[#1B4332] font-bold text-[10px] flex items-center justify-center border border-[#C2E0CC] shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-secondary text-secondary-foreground font-bold text-xs flex items-center justify-center border border-primary/25 shrink-0">
                           {st.first_name?.[0] || st.full_name[0] || 'S'}
                         </div>
                       )}
@@ -492,9 +492,9 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
                   <td className="py-3 px-4 text-slate-600">{st.year} · {st.section}</td>
                   <td className="py-3 px-4">
                     <span
-                      className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                      className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${
                         st.status === 'Active'
-                          ? 'bg-[#EBF5EE] text-[#1B4332] border border-[#C2E0CC]'
+                          ? 'bg-secondary text-secondary-foreground border border-primary/25'
                           : 'bg-slate-100 text-slate-600 border border-slate-200'
                       }`}
                     >
@@ -507,21 +507,21 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
                         <button
                           onClick={() => handleOpenWalletPass(st)}
                           title="Preview Google Wallet Pass"
-                          className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-[#EBF5EE] hover:text-[#2D6A4F]"
+                          className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-secondary hover:text-primary"
                         >
                           <Wallet className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => setAttendanceStudent(st)}
                           title="Manage Attendance"
-                          className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-[#EBF5EE] hover:text-[#2D6A4F]"
+                          className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-secondary hover:text-primary"
                         >
                           <ClipboardCheck className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => handleResetPass(st)}
                           title="Reset Password to Default"
-                          className="p-1.5 hover:bg-[#EBF5EE] text-slate-500 hover:text-[#2D6A4F] rounded-lg transition-colors"
+                          className="p-1.5 hover:bg-secondary text-slate-500 hover:text-primary rounded-lg transition-colors"
                         >
                           <KeyRound className="w-3.5 h-3.5" />
                         </button>
@@ -552,18 +552,18 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
       {/* Mobile Card List View */}
       <div className="md:hidden space-y-2.5">
         {students.length === 0 ? (
-          <div className="rounded-2xl border border-[#E5EBE5] bg-white p-8 text-center text-xs text-muted-foreground">
+          <div className="rounded-2xl border border-border bg-white p-8 text-center text-xs text-muted-foreground">
             No students found.
           </div>
         ) : (
           students.map((st) => (
-            <div key={st.id} className="p-4 bg-white border border-[#E5EBE5] rounded-2xl space-y-2 shadow-xs">
+            <div key={st.id} className="p-4 bg-white border border-border rounded-2xl space-y-2 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-mono font-bold text-[#1B4332]">{st.uid}</span>
+                <span className="text-xs font-mono font-bold text-primary">{st.uid}</span>
                 <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                     st.status === 'Active'
-                      ? 'bg-[#EBF5EE] text-[#1B4332] border border-[#C2E0CC]'
+                      ? 'bg-secondary text-secondary-foreground border border-primary/25'
                       : 'bg-slate-100 text-slate-600'
                   }`}
                 >
@@ -575,10 +575,10 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
                   <img
                     src={st.avatar_url}
                     alt={st.full_name}
-                    className="w-10 h-10 rounded-full object-cover border border-[#2D6A4F]/20 shadow-2xs shrink-0"
+                    className="w-10 h-10 rounded-full object-cover border border-primary/20 shadow-2xs shrink-0"
                   />
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-[#EBF5EE] text-[#1B4332] font-bold text-xs flex items-center justify-center border border-[#C2E0CC] shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-secondary text-secondary-foreground font-bold text-xs flex items-center justify-center border border-primary/25 shrink-0">
                     {st.first_name?.[0] || st.full_name[0] || 'S'}
                   </div>
                 )}
@@ -588,28 +588,28 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
                 </div>
               </div>
               {userRole === 'admin' && (
-                <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5EBE5]">
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
                   <button
                     onClick={() => setAttendanceStudent(st)}
-                    className="flex items-center gap-1 text-[11px] font-bold text-[#2D6A4F] hover:underline"
+                    className="flex items-center gap-1 text-xs font-bold text-primary hover:underline"
                   >
                     <ClipboardCheck className="h-3 w-3" /> Attendance
                   </button>
                   <button
                     onClick={() => handleResetPass(st)}
-                    className="text-[11px] text-[#2D6A4F] font-bold hover:underline flex items-center gap-1"
+                    className="text-xs text-primary font-bold hover:underline flex items-center gap-1"
                   >
                     <KeyRound className="w-3 h-3" /> Reset Pass
                   </button>
                   <button
                     onClick={() => handleOpenEdit(st)}
-                    className="text-[11px] text-slate-600 font-semibold hover:underline flex items-center gap-1 ml-2"
+                    className="text-xs text-slate-600 font-semibold hover:underline flex items-center gap-1 ml-2"
                   >
                     <Edit2 className="w-3 h-3" /> Edit
                   </button>
                   <button
                     onClick={() => setStudentToDelete(st)}
-                    className="text-[11px] text-red-600 font-semibold hover:underline flex items-center gap-1 ml-2"
+                    className="text-xs text-red-600 font-semibold hover:underline flex items-center gap-1 ml-2"
                   >
                     <Trash2 className="w-3 h-3" /> Delete
                   </button>
@@ -628,14 +628,14 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
             <button
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
-              className="px-3 py-1.5 rounded-xl bg-white border border-[#E5EBE5] hover:border-slate-300 disabled:opacity-40"
+              className="px-3 py-1.5 rounded-xl bg-white border border-border hover:border-slate-300 disabled:opacity-40"
             >
               Prev
             </button>
             <button
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="px-3 py-1.5 rounded-xl bg-white border border-[#E5EBE5] hover:border-slate-300 disabled:opacity-40"
+              className="px-3 py-1.5 rounded-xl bg-white border border-border hover:border-slate-300 disabled:opacity-40"
             >
               Next
             </button>
@@ -646,8 +646,8 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
       {/* Add / Edit Student Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-[#E5EBE5] rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-base font-extrabold text-[#1B4332]">
+          <div className="bg-white border border-border rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-base font-extrabold text-primary">
               {editingStudent ? 'Edit Student Details' : 'Add New Student'}
             </h3>
             <form onSubmit={handleSaveStudent} className="space-y-3">
@@ -657,20 +657,20 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
                   Student Photo (Optional · Max 2MB, JPG/PNG/WebP)
                 </label>
                 <div className="flex items-center gap-3">
-                  <div className="relative w-24 h-24 rounded-2xl bg-[#F8FAF9] border-2 border-dashed border-[#C2E0CC] flex items-center justify-center overflow-hidden shrink-0">
+                  <div className="relative w-24 h-24 rounded-2xl bg-muted border-2 border-dashed border-primary/25 flex items-center justify-center overflow-hidden shrink-0">
                     {avatarPreview ? (
                       <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
                     ) : (
                       <Camera className="h-5 w-5 text-muted-foreground" />
                     )}
                     {avatarUploading && (
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-[9px] font-bold">
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-xs font-bold">
                         ...
                       </div>
                     )}
                   </div>
                   <div className="flex-1 space-y-1">
-                    <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#EBF5EE] hover:bg-[#d8eedf] text-[#1B4332] text-xs font-bold rounded-xl border border-[#C2E0CC] transition-colors">
+                    <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary hover:bg-primary/15 text-secondary-foreground text-xs font-bold rounded-xl border border-primary/25 transition-colors">
                       <Camera className="w-3.5 h-3.5" />
                       <span>{avatarPreview ? 'Change Photo' : 'Upload Photo'}</span>
                       <input
@@ -684,12 +684,12 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
                       <button
                         type="button"
                         onClick={handleRemoveAvatar}
-                        className="block text-[11px] text-red-600 hover:underline font-semibold"
+                        className="block text-xs text-red-600 hover:underline font-semibold"
                       >
                         Remove Photo
                       </button>
                     )}
-                    <p className="text-[10px] text-muted-foreground">Strictly no GIFs. Image will be optimized automatically.</p>
+                    <p className="text-xs text-muted-foreground">Strictly no GIFs. Image will be optimized automatically.</p>
                   </div>
                 </div>
               </div>
@@ -708,7 +708,7 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
                   readOnly
                   placeholder="Allocated when the student is saved"
                   value={formData.uid}
-                  className="w-full bg-slate-100 border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-600 placeholder-slate-400 cursor-not-allowed"
+                  className="w-full bg-slate-100 border border-border rounded-xl px-3 py-2 text-xs text-slate-600 placeholder-slate-400 cursor-not-allowed"
                 />
               </div>
               <div>
@@ -718,7 +718,7 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
                   required
                   value={formData.student_number}
                   onChange={(e) => setFormData({ ...formData, student_number: e.target.value })}
-                  className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900"
+                  className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-xs text-slate-900"
                 />
               </div>
 
@@ -732,7 +732,7 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
                     placeholder="e.g. Juan"
                     value={formData.first_name}
                     onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                    className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900"
+                    className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-xs text-slate-900"
                   />
                 </div>
                 <div>
@@ -743,12 +743,12 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
                     placeholder="e.g. Dela Cruz"
                     value={formData.last_name}
                     onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                    className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900"
+                    className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-xs text-slate-900"
                   />
                 </div>
               </div>
               {!editingStudent && formData.last_name && (
-                <p className="text-[11px] text-[#2D6A4F] font-semibold bg-[#EBF5EE] p-2 rounded-xl border border-[#C2E0CC]">
+                <p className="text-xs text-secondary-foreground font-semibold bg-secondary p-2 rounded-xl border border-primary/25">
                   Default Password: <b>{formData.last_name.trim().toUpperCase()}</b>
                 </p>
               )}
@@ -759,7 +759,7 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
                   <select
                     value={formData.year}
                     onChange={(e) => setFormData({ ...formData, year: e.target.value as YearLevel })}
-                    className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-2 py-2 text-xs text-slate-900"
+                    className="w-full bg-muted border border-border rounded-xl px-2 py-2 text-xs text-slate-900"
                   >
                     {YEARS.map((y) => (
                       <option key={y} value={y}>{y}</option>
@@ -771,7 +771,7 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
                   <select
                     value={formData.section}
                     onChange={(e) => setFormData({ ...formData, section: e.target.value })}
-                    className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-2 py-2 text-xs text-slate-900"
+                    className="w-full bg-muted border border-border rounded-xl px-2 py-2 text-xs text-slate-900"
                   >
                     {BLOCKS.map((b) => (
                       <option key={b} value={b}>{b}</option>
@@ -785,7 +785,7 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
                 <select
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value as MemberStatus })}
-                  className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-2 py-2 text-xs text-slate-900"
+                  className="w-full bg-muted border border-border rounded-xl px-2 py-2 text-xs text-slate-900"
                 >
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
@@ -803,7 +803,7 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
                 <button
                   type="submit"
                   disabled={isPending || avatarUploading}
-                  className="px-4 py-2 rounded-xl bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold text-xs transition-colors disabled:opacity-50"
+                  className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs transition-colors disabled:opacity-50"
                 >
                   {isPending || avatarUploading ? 'Saving...' : 'Save Student'}
                 </button>
@@ -816,7 +816,7 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
       {/* Delete Confirmation Modal */}
       {studentToDelete && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-[#E5EBE5] rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-white border border-border rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center gap-2.5 text-red-600 font-bold text-base">
               <AlertTriangle className="w-5 h-5 text-red-600" />
               <span>Delete Student Record?</span>

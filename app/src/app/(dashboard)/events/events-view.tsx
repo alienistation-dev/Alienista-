@@ -138,7 +138,7 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
         <div
           className={`p-3 rounded-2xl text-xs font-semibold border ${
             toast.type === 'ok'
-              ? 'bg-[#EBF5EE] border-[#C2E0CC] text-[#1B4332]'
+              ? 'bg-secondary border-primary/25 text-secondary-foreground'
               : 'bg-red-50 border-red-200 text-red-700'
           }`}
         >
@@ -154,7 +154,7 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
         {userRole === 'admin' && (
           <button
             onClick={() => setIsModalOpen(true)}
-            className="bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-colors shadow-xs"
+            className="bg-primary hover:bg-primary/90 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-colors shadow-xs"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Create Event</span>
@@ -165,7 +165,7 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
       {/* Events List Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {events.length === 0 ? (
-          <div className="col-span-2 rounded-2xl border border-[#E5EBE5] bg-white p-12 text-center text-xs text-muted-foreground">
+          <div className="col-span-2 rounded-2xl border border-border bg-white p-12 text-center text-xs text-muted-foreground">
             No events scheduled yet.
           </div>
         ) : (
@@ -178,24 +178,24 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
             return (
               <div
                 key={ev.id}
-                className="p-5 bg-white border border-[#E5EBE5] rounded-3xl flex flex-col justify-between space-y-4 hover:border-slate-300 transition-colors shadow-xs"
+                className="p-5 bg-white border border-border rounded-3xl flex flex-col justify-between space-y-4 hover:border-slate-300 transition-colors shadow-xs"
               >
                 <div className="flex items-start gap-4">
                   {/* Date Block */}
-                  <div className="shrink-0 w-12 h-14 rounded-2xl bg-[#EBF5EE] border border-[#C2E0CC] flex flex-col items-center justify-center text-center">
-                    <span className="text-[10px] uppercase font-extrabold text-[#2D6A4F]">{mon}</span>
-                    <span className="text-lg font-extrabold text-[#1B4332] leading-none mt-0.5">{day}</span>
+                  <div className="shrink-0 w-12 h-14 rounded-2xl bg-secondary border border-primary/25 flex flex-col items-center justify-center text-center">
+                    <span className="text-xs uppercase font-extrabold text-primary">{mon}</span>
+                    <span className="text-lg font-extrabold text-primary leading-none mt-0.5">{day}</span>
                   </div>
 
                   {/* Main Details */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <h3 className="text-sm font-bold text-slate-900 truncate">{ev.name}</h3>
-                      <span className="text-[10px] font-bold text-slate-500">{ev.weight || 1} pts</span>
+                      <span className="text-xs font-bold text-slate-500">{ev.weight || 1} pts</span>
                       <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                        className={`px-2.5 py-0.5 rounded-full text-xs font-bold shrink-0 ${
                           ev.status === 'Open'
-                            ? 'bg-[#EBF5EE] text-[#1B4332] border border-[#C2E0CC]'
+                            ? 'bg-secondary text-secondary-foreground border border-primary/25'
                             : 'bg-slate-100 text-slate-600 border border-slate-200'
                         }`}
                       >
@@ -205,10 +205,10 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
 
                     <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
                       <span className="flex items-center gap-1 font-medium">
-                        <Clock className="w-3 h-3 text-[#2D6A4F]" /> {timeStr}
+                        <Clock className="w-3 h-3 text-primary" /> {timeStr}
                       </span>
                       <span className="flex items-center gap-1 truncate font-medium">
-                        <MapPin className="w-3 h-3 text-[#2D6A4F]" /> {ev.venue}
+                        <MapPin className="w-3 h-3 text-primary" /> {ev.venue}
                       </span>
                     </div>
 
@@ -222,15 +222,15 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
 
                 {/* Slots Breakdown */}
                 {ev.slots && ev.slots.length > 0 && (
-                  <div className="p-3 rounded-2xl bg-[#F8FAF9] border border-[#E5EBE5] space-y-1.5 text-[11px]">
-                    <div className="font-bold text-[#2D6A4F] flex items-center gap-1 text-[10px] uppercase tracking-wider">
+                  <div className="p-3 rounded-2xl bg-muted border border-border space-y-1.5 text-xs">
+                    <div className="font-bold text-primary flex items-center gap-1 text-xs uppercase tracking-wider">
                       <Layers className="w-3 h-3" /> Time Windows
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                       {ev.slots.map((slot) => (
-                        <div key={slot.id} className="p-2 rounded-xl bg-white border border-[#E5EBE5] text-slate-700">
+                        <div key={slot.id} className="p-2 rounded-xl bg-white border border-border text-slate-700">
                           <b className="text-slate-900">{slot.label}</b>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
+                          <div className="text-xs text-slate-500 mt-0.5">
                             {new Date(slot.opens_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} -{' '}
                             {new Date(slot.closes_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </div>
@@ -242,13 +242,13 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
 
                 {/* Card Actions (Admin only) */}
                 {userRole === 'admin' && (
-                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5EBE5]">
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
                     <button
                       onClick={() => handleToggleStatus(ev)}
                       disabled={isPending}
-                      className="px-3 py-1 rounded-xl text-xs font-semibold bg-[#F8FAF9] border border-[#E5EBE5] text-slate-700 hover:text-slate-900 flex items-center gap-1 transition-colors"
+                      className="px-3 py-1 rounded-xl text-xs font-semibold bg-muted border border-border text-slate-700 hover:text-slate-900 flex items-center gap-1 transition-colors"
                     >
-                      <Power className="w-3 h-3 text-[#2D6A4F]" />
+                      <Power className="w-3 h-3 text-primary" />
                       {ev.status === 'Open' ? 'Close' : 'Reopen'}
                     </button>
                     <button
@@ -270,8 +270,8 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
       {/* Create Event Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-[#E5EBE5] rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-base font-extrabold text-[#1B4332]">Create New Event</h3>
+          <div className="bg-white border border-border rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-base font-extrabold text-primary">Create New Event</h3>
             <form onSubmit={handleCreateEvent} className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Event Title</label>
@@ -281,7 +281,7 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. ACS General Assembly 2026"
-                  className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#2D6A4F]"
+                  className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-primary"
                 />
               </div>
 
@@ -293,7 +293,7 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
                     required
                     value={startsAt}
                     onChange={(e) => setStartsAt(e.target.value)}
-                    className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900"
+                    className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-xs text-slate-900"
                   />
                 </div>
                 <div>
@@ -304,7 +304,7 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
                     value={venue}
                     onChange={(e) => setVenue(e.target.value)}
                     placeholder="e.g. PSU Gymnasium"
-                    className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900"
+                    className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-xs text-slate-900"
                   />
                 </div>
               </div>
@@ -316,7 +316,7 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Brief agenda or guidelines..."
-                  className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900"
+                  className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-xs text-slate-900"
                 />
               </div>
 
@@ -329,21 +329,21 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
                   required
                   value={weight}
                   onChange={(e) => setWeight(Number(e.target.value))}
-                  className="w-28 bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900"
+                  className="w-28 bg-muted border border-border rounded-xl px-3 py-2 text-xs text-slate-900"
                 />
               </div>
 
               {/* Attendance Slots Configuration */}
-              <div className="pt-2 border-t border-[#E5EBE5]">
+              <div className="pt-2 border-t border-border">
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <label className="text-xs font-bold text-slate-900 block">Attendance Time Windows</label>
-                    <span className="text-[11px] text-slate-500">Configure active scan windows (e.g. Morning Time-In).</span>
+                    <span className="text-xs text-slate-500">Configure active scan windows (e.g. Morning Time-In).</span>
                   </div>
                   <button
                     type="button"
                     onClick={handleAddSlot}
-                    className="px-3 py-1 bg-[#EBF5EE] border border-[#C2E0CC] rounded-xl text-xs text-[#1B4332] font-bold hover:bg-[#d8eedf]"
+                    className="px-3 py-1 bg-secondary border border-primary/25 rounded-xl text-xs text-secondary-foreground font-bold hover:bg-primary/15"
                   >
                     + Add Slot
                   </button>
@@ -351,19 +351,19 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
 
                 <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                   {slots.map((slot, index) => (
-                    <div key={index} className="p-3 bg-[#F8FAF9] border border-[#E5EBE5] rounded-2xl space-y-2">
+                    <div key={index} className="p-3 bg-muted border border-border rounded-2xl space-y-2">
                       <div className="flex items-center justify-between">
                         <input
                           type="text"
                           value={slot.label}
                           onChange={(e) => handleSlotChange(index, 'label', e.target.value)}
                           placeholder="e.g. Morning Time-In"
-                          className="bg-white border border-[#E5EBE5] rounded-xl px-2.5 py-1 text-xs text-slate-900 flex-1 mr-2"
+                          className="bg-white border border-border rounded-xl px-2.5 py-1 text-xs text-slate-900 flex-1 mr-2"
                         />
                         <select
                           value={slot.slot_type}
                           onChange={(e) => handleSlotChange(index, 'slot_type', e.target.value)}
-                          className="bg-white border border-[#E5EBE5] rounded-xl px-2.5 py-1 text-xs text-slate-700 mr-2"
+                          className="bg-white border border-border rounded-xl px-2.5 py-1 text-xs text-slate-700 mr-2"
                         >
                           <option value="am_in">AM In</option>
                           <option value="am_out">AM Out</option>
@@ -379,14 +379,14 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                         <div>
                           <span className="text-slate-500 font-medium block mb-0.5">Opens At</span>
                           <input
                             type="datetime-local"
                             value={slot.opens_at}
                             onChange={(e) => handleSlotChange(index, 'opens_at', e.target.value)}
-                            className="w-full bg-white border border-[#E5EBE5] rounded-xl px-2 py-1 text-slate-800 text-xs"
+                            className="w-full bg-white border border-border rounded-xl px-2 py-1 text-slate-800 text-xs"
                           />
                         </div>
                         <div>
@@ -395,7 +395,7 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
                             type="datetime-local"
                             value={slot.late_cutoff_at}
                             onChange={(e) => handleSlotChange(index, 'late_cutoff_at', e.target.value)}
-                            className="w-full bg-white border border-[#E5EBE5] rounded-xl px-2 py-1 text-slate-800 text-xs"
+                            className="w-full bg-white border border-border rounded-xl px-2 py-1 text-slate-800 text-xs"
                           />
                         </div>
                         <div>
@@ -404,11 +404,11 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
                             type="datetime-local"
                             value={slot.closes_at}
                             onChange={(e) => handleSlotChange(index, 'closes_at', e.target.value)}
-                            className="w-full bg-white border border-[#E5EBE5] rounded-xl px-2 py-1 text-slate-800 text-xs"
+                            className="w-full bg-white border border-border rounded-xl px-2 py-1 text-slate-800 text-xs"
                           />
                         </div>
                       </div>
-                      <div className="flex items-center gap-4 text-[11px]">
+                      <div className="flex items-center gap-4 text-xs">
                         <label className="flex items-center gap-2 text-slate-600">
                           <input
                             type="checkbox"
@@ -425,7 +425,7 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
                             max={100}
                             value={slot.late_penalty_percent}
                             onChange={(e) => handleSlotChange(index, 'late_penalty_percent', Number(e.target.value))}
-                            className="w-16 bg-white border border-[#E5EBE5] rounded-lg px-2 py-1 text-slate-800"
+                            className="w-16 bg-white border border-border rounded-lg px-2 py-1 text-slate-800"
                           />
                           %
                         </label>
@@ -446,7 +446,7 @@ export function EventsView({ initialEvents, userRole }: EventsViewProps) {
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="px-4 py-2 rounded-xl bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold text-xs transition-colors"
+                  className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs transition-colors"
                 >
                   {isPending ? 'Creating...' : 'Create Event'}
                 </button>

@@ -170,7 +170,7 @@ export function SettingsView({
         <div
           className={`p-3.5 rounded-2xl text-xs font-bold border ${
             toast.type === 'ok'
-              ? 'bg-[#EBF5EE] border-[#C2E0CC] text-[#1B4332]'
+              ? 'bg-secondary border-primary/25 text-secondary-foreground'
               : 'bg-red-50 border-red-200 text-red-700'
           }`}
         >
@@ -179,9 +179,9 @@ export function SettingsView({
       )}
 
       {/* Admin Credentials & Master Login Card */}
-      <div className="p-6 bg-white border border-[#E5EBE5] rounded-3xl shadow-xs space-y-4">
+      <div className="p-6 bg-white border border-border rounded-3xl shadow-xs space-y-4">
         <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-          <Shield className="w-4 h-4 text-[#2D6A4F]" />
+          <Shield className="w-4 h-4 text-primary" />
           <span>Admin Master Credentials</span>
         </h3>
         <p className="text-xs text-slate-500">
@@ -198,7 +198,7 @@ export function SettingsView({
                 value={newAdminUsername}
                 onChange={(e) => setNewAdminUsername(e.target.value)}
                 placeholder="admin"
-                className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900"
+                className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-xs text-slate-900"
               />
             </div>
             <div>
@@ -208,20 +208,20 @@ export function SettingsView({
                 value={newAdminPassword}
                 onChange={(e) => setNewAdminPassword(e.target.value)}
                 placeholder="New password (min 6 chars)"
-                className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900"
+                className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-xs text-slate-900"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#2D6A4F] mb-1">Current Password (required to save changes)</label>
+            <label className="block text-xs font-bold text-primary mb-1">Current Password (required to save changes)</label>
             <input
               type="password"
               required
               value={currentAdminPassword}
               onChange={(e) => setCurrentAdminPassword(e.target.value)}
               placeholder="Current admin password"
-              className="w-full bg-[#F8FAF9] border border-[#C2E0CC] rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#2D6A4F]"
+              className="w-full bg-muted border border-primary/25 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-primary"
             />
           </div>
 
@@ -229,7 +229,7 @@ export function SettingsView({
             <button
               type="submit"
               disabled={isPending}
-              className="px-4 py-2 bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors shadow-xs"
+              className="px-4 py-2 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors shadow-xs"
             >
               <Save className="w-3.5 h-3.5" />
               <span>Update Credentials</span>
@@ -239,28 +239,28 @@ export function SettingsView({
       </div>
 
       {/* Current Term Card */}
-      <div className="p-6 bg-white border border-[#E5EBE5] rounded-3xl shadow-xs space-y-4">
+      <div className="p-6 bg-white border border-border rounded-3xl shadow-xs space-y-4">
         <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-          <Settings className="w-4 h-4 text-[#2D6A4F]" />
+          <Settings className="w-4 h-4 text-primary" />
           <span>Academic Term Management</span>
         </h3>
 
         <div className="grid grid-cols-2 gap-4">
-          <div className="p-4 bg-[#F8FAF9] border border-[#E5EBE5] rounded-2xl">
-            <span className="text-[11px] text-slate-500 font-bold uppercase tracking-wider block mb-1">
+          <div className="p-4 bg-muted border border-border rounded-2xl">
+            <span className="text-xs text-slate-500 font-bold uppercase tracking-wider block mb-1">
               Current Semester
             </span>
-            <span className="text-lg font-extrabold text-[#1B4332]">{settings.semester}</span>
+            <span className="text-lg font-extrabold text-primary">{settings.semester}</span>
           </div>
-          <div className="p-4 bg-[#F8FAF9] border border-[#E5EBE5] rounded-2xl">
-            <span className="text-[11px] text-slate-500 font-bold uppercase tracking-wider block mb-1">
+          <div className="p-4 bg-muted border border-border rounded-2xl">
+            <span className="text-xs text-slate-500 font-bold uppercase tracking-wider block mb-1">
               Academic Year
             </span>
-            <span className="text-lg font-extrabold text-[#1B4332]">{settings.academic_year}</span>
+            <span className="text-lg font-extrabold text-primary">{settings.academic_year}</span>
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#EBF5EE] border border-[#C2E0CC] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="p-4 rounded-2xl bg-secondary border border-primary/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="text-xs text-slate-700 leading-relaxed font-medium">
             {settings.semester === 'First Semester' ? (
               <span>Move term forward to <b>Second Semester</b> (maintains student year levels).</span>
@@ -271,7 +271,7 @@ export function SettingsView({
           <button
             onClick={() => setShowAdvanceModal(true)}
             disabled={isPending}
-            className="px-4 py-2 bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shrink-0 transition-colors shadow-xs"
+            className="px-4 py-2 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shrink-0 transition-colors shadow-xs"
           >
             <span>Advance Term</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -285,11 +285,11 @@ export function SettingsView({
       />
 
       {/* Google Wallet Passes Card */}
-      <div className="p-6 bg-white border border-[#E5EBE5] rounded-3xl shadow-xs space-y-4">
+      <div className="p-6 bg-white border border-border rounded-3xl shadow-xs space-y-4">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Wallet className="w-4 h-4 text-[#2D6A4F]" />
+              <Wallet className="w-4 h-4 text-primary" />
               <span>Google Wallet Passes</span>
             </h3>
             <p className="text-xs text-slate-500">
@@ -304,7 +304,7 @@ export function SettingsView({
             onClick={handleToggleGoogleWallet}
             disabled={isPending}
             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-              googleWalletEnabled ? 'bg-[#2D6A4F]' : 'bg-slate-200'
+              googleWalletEnabled ? 'bg-primary' : 'bg-slate-200'
             }`}
           >
             <span
@@ -315,7 +315,7 @@ export function SettingsView({
           </button>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#F8FAF9] border border-[#E5EBE5] text-xs text-slate-600 space-y-1">
+        <div className="p-4 rounded-2xl bg-muted border border-border text-xs text-slate-600 space-y-1">
           <p className="font-semibold text-slate-800">How it works:</p>
           <ul className="list-disc list-inside space-y-0.5 text-slate-500">
             <li>When enabled, students will see a &quot;Save to Google Wallet&quot; button on their badge page.</li>
@@ -323,22 +323,22 @@ export function SettingsView({
           </ul>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#E5EBE5] pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
           <div>
             <p className="font-semibold text-slate-800">Wallet design experiment</p>
-            <p className="text-[11px] text-slate-500">Organization-wide and reversible. New saves and refreshes use this choice.</p>
+            <p className="text-xs text-slate-500">Organization-wide and reversible. New saves and refreshes use this choice.</p>
           </div>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => handleWalletDesign('builder')} disabled={isPending || googleWalletDesign === 'builder'} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${googleWalletDesign === 'builder' ? 'bg-[#2D6A4F] text-white border-[#2D6A4F]' : 'bg-white text-slate-600 border-[#E5EBE5]'}`}>Pass Builder</button>
-            <button type="button" onClick={() => handleWalletDesign('legacy')} disabled={isPending || googleWalletDesign === 'legacy'} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${googleWalletDesign === 'legacy' ? 'bg-slate-700 text-white border-slate-700' : 'bg-white text-slate-600 border-[#E5EBE5]'}`}>Revert</button>
+            <button type="button" onClick={() => handleWalletDesign('builder')} disabled={isPending || googleWalletDesign === 'builder'} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${googleWalletDesign === 'builder' ? 'bg-primary text-white border-primary' : 'bg-white text-slate-600 border-border'}`}>Pass Builder</button>
+            <button type="button" onClick={() => handleWalletDesign('legacy')} disabled={isPending || googleWalletDesign === 'legacy'} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${googleWalletDesign === 'legacy' ? 'bg-slate-700 text-white border-slate-700' : 'bg-white text-slate-600 border-border'}`}>Revert</button>
           </div>
         </div>
       </div>
 
       {/* Officer Roster & Access Control */}
-      <div className="p-6 bg-white border border-[#E5EBE5] rounded-3xl shadow-xs space-y-5">
+      <div className="p-6 bg-white border border-border rounded-3xl shadow-xs space-y-5">
         <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-          <UserCheck className="w-4 h-4 text-[#2D6A4F]" />
+          <UserCheck className="w-4 h-4 text-primary" />
           <span>Officer Roster & Access Control</span>
         </h3>
 
@@ -350,7 +350,7 @@ export function SettingsView({
             placeholder="Officer Full Name"
             value={officerName}
             onChange={(e) => setOfficerName(e.target.value)}
-            className="flex-1 bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#2D6A4F]"
+            className="flex-1 bg-muted border border-border rounded-xl px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-primary"
           />
           <input
             type="password"
@@ -358,12 +358,12 @@ export function SettingsView({
             placeholder="PIN (min 4 digits)"
             value={officerPin}
             onChange={(e) => setOfficerPin(e.target.value)}
-            className="w-full sm:w-40 bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#2D6A4F]"
+            className="w-full sm:w-40 bg-muted border border-border rounded-xl px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-primary"
           />
           <button
             type="submit"
             disabled={isPending}
-            className="px-4 py-2 bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors shadow-xs shrink-0"
+            className="px-4 py-2 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors shadow-xs shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Officer</span>
@@ -371,16 +371,16 @@ export function SettingsView({
         </form>
 
         {/* Officers Table */}
-        <div className="border border-[#E5EBE5] rounded-2xl overflow-hidden">
+        <div className="border border-border rounded-2xl overflow-hidden">
           <table className="w-full text-left text-xs">
-            <thead className="bg-[#F8FAF9] text-slate-600">
+            <thead className="bg-muted text-slate-600">
               <tr>
-                <th className="py-2.5 px-4 font-bold uppercase text-[10px]">Officer Name</th>
-                <th className="py-2.5 px-4 font-bold uppercase text-[10px]">Status</th>
-                <th className="py-2.5 px-4 font-bold uppercase text-[10px] text-right">Actions</th>
+                <th className="py-2.5 px-4 font-bold uppercase text-xs">Officer Name</th>
+                <th className="py-2.5 px-4 font-bold uppercase text-xs">Status</th>
+                <th className="py-2.5 px-4 font-bold uppercase text-xs text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E5EBE5] text-slate-700">
+            <tbody className="divide-y divide-border text-slate-700">
               {officers.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="py-6 text-center text-muted-foreground">
@@ -389,10 +389,10 @@ export function SettingsView({
                 </tr>
               ) : (
                 officers.map((o) => (
-                  <tr key={o.id} className="hover:bg-[#F8FAF9]">
+                  <tr key={o.id} className="hover:bg-muted">
                     <td className="py-3 px-4 font-bold text-slate-900">{o.name}</td>
                     <td className="py-3 px-4">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#EBF5EE] text-[#1B4332] border border-[#C2E0CC]">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-secondary text-secondary-foreground border border-primary/25">
                         {o.status}
                       </span>
                     </td>
@@ -403,13 +403,13 @@ export function SettingsView({
                             setResetModalOfficer(o);
                             setNewPin('');
                           }}
-                          className="text-[11px] text-[#2D6A4F] font-bold hover:underline flex items-center gap-1"
+                          className="text-xs text-primary font-bold hover:underline flex items-center gap-1"
                         >
                           <KeyRound className="w-3 h-3" /> Reset PIN
                         </button>
                         <button
                           onClick={() => setOfficerToDelete(o)}
-                          className="text-[11px] text-red-600 font-bold hover:underline flex items-center gap-1 ml-2"
+                          className="text-xs text-red-600 font-bold hover:underline flex items-center gap-1 ml-2"
                         >
                           <Trash2 className="w-3 h-3" /> Remove
                         </button>
@@ -426,8 +426,8 @@ export function SettingsView({
       {/* Advance Term Confirmation Modal */}
       {showAdvanceModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-[#E5EBE5] rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-2.5 text-[#1B4332] font-bold text-base">
+          <div className="bg-white border border-border rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-2.5 text-primary font-bold text-base">
               <AlertTriangle className="w-5 h-5 text-amber-600" />
               <span>Confirm Academic Term Advancement</span>
             </div>
@@ -448,7 +448,7 @@ export function SettingsView({
                 type="button"
                 disabled={isPending}
                 onClick={handleConfirmAdvanceSemester}
-                className="px-4 py-2 bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold text-xs rounded-xl transition-colors shadow-xs"
+                className="px-4 py-2 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-xl transition-colors shadow-xs"
               >
                 {isPending ? 'Advancing...' : 'Confirm Advance'}
               </button>
@@ -460,7 +460,7 @@ export function SettingsView({
       {/* Remove Officer Modal */}
       {officerToDelete && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-[#E5EBE5] rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-white border border-border rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center gap-2.5 text-red-600 font-bold text-base">
               <AlertTriangle className="w-5 h-5 text-red-600" />
               <span>Remove Officer Account?</span>
@@ -492,7 +492,7 @@ export function SettingsView({
       {/* Reset PIN Modal */}
       {resetModalOfficer && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-[#E5EBE5] rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-white border border-border rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
             <h3 className="text-sm font-bold text-slate-900">Reset Officer PIN: {resetModalOfficer.name}</h3>
             <form onSubmit={handleResetPinSubmit} className="space-y-3">
               <div>
@@ -502,7 +502,7 @@ export function SettingsView({
                   required
                   value={newPin}
                   onChange={(e) => setNewPin(e.target.value)}
-                  className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900"
+                  className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-xs text-slate-900"
                 />
               </div>
               <div className="flex items-center justify-end gap-2 pt-2">
@@ -516,7 +516,7 @@ export function SettingsView({
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="px-3.5 py-1.5 bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold rounded-xl text-xs"
+                  className="px-3.5 py-1.5 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl text-xs"
                 >
                   Save New PIN
                 </button>

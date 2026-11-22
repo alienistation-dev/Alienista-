@@ -13,7 +13,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAF9] text-slate-900 flex">
+    <div className="min-h-screen bg-background text-slate-900 flex">
       <NavigationMetrics />
       <Sidebar user={user} />
       <div className="flex-1 flex flex-col min-w-0 pb-20 md:pb-6">

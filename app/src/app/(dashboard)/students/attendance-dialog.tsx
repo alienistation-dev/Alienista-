@@ -175,7 +175,7 @@ function AttendanceDialogContent({ student, onClose }: { student: Student; onClo
                   </div>
                   {!isEditing && (
                     <div className="flex items-center gap-1">
-                      <button type="button" onClick={() => setEditing({ record, state: editStateFor(record) })} title="Correct attendance record" className="rounded-lg p-2 text-[#2D6A4F] hover:bg-[#EBF5EE]">
+                      <button type="button" onClick={() => setEditing({ record, state: editStateFor(record) })} title="Correct attendance record" className="rounded-lg p-2 text-primary hover:bg-secondary">
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button type="button" onClick={() => { setDeleting(record); setDeleteReason(''); }} title="Delete attendance record" className="rounded-lg p-2 text-red-600 hover:bg-red-50">
@@ -215,10 +215,10 @@ function AttendanceDialogContent({ student, onClose }: { student: Student; onClo
                       </label>
                       <div className="grid grid-cols-2 gap-2">
                         <div className="rounded-lg border border-border bg-slate-50 p-3">
-                          <span className="block text-[10px] font-bold uppercase text-muted-foreground">Normal points</span>
+                          <span className="block text-xs font-bold uppercase text-muted-foreground">Normal points</span>
                           <strong className="mt-1 block text-sm text-foreground">{normalEarnedPoints(record, editing.state).toFixed(2)} / {maximum.toFixed(2)}</strong>
                         </div>
-                        <label className="rounded-lg border border-border bg-slate-50 p-3 text-[10px] font-bold uppercase text-muted-foreground">
+                        <label className="rounded-lg border border-border bg-slate-50 p-3 text-xs font-bold uppercase text-muted-foreground">
                           Awarded override
                           <input type="number" min="0" max={maximum} step="0.01" placeholder="None" value={editing.state.earned_points_override} onChange={(event) => setEditing({ ...editing, state: { ...editing.state, earned_points_override: event.target.value } })} className="mt-1 w-full border-0 bg-transparent p-0 text-sm font-bold text-foreground outline-none" />
                         </label>
@@ -230,23 +230,23 @@ function AttendanceDialogContent({ student, onClose }: { student: Student; onClo
                     </div>
                     <div className="flex justify-end gap-2 lg:col-span-2">
                       <button type="button" onClick={() => setEditing(null)} className="rounded-lg px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-slate-100">Cancel</button>
-                      <button type="button" disabled={isPending} onClick={handleSave} className="inline-flex items-center gap-1.5 rounded-lg bg-[#2D6A4F] px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
+                      <button type="button" disabled={isPending} onClick={handleSave} className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
                         <Check className="h-3.5 w-3.5" /> Save correction
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-3 p-4 text-xs sm:grid-cols-4">
-                    <div><span className="block text-[10px] font-bold uppercase text-muted-foreground">Status</span><strong className="mt-1 block text-foreground">{record.attendance_status.replace('_', ' ')}</strong></div>
-                    <div><span className="block text-[10px] font-bold uppercase text-muted-foreground">Penalty</span><strong className="mt-1 block text-foreground">{Number(record.late_penalty_percent)}%</strong></div>
-                    <div><span className="block text-[10px] font-bold uppercase text-muted-foreground">Normal points</span><strong className="mt-1 block text-foreground">{(record.attendance_status === 'late' ? maximum * (1 - Number(record.late_penalty_percent) / 100) : maximum).toFixed(2)}</strong></div>
-                    <div><span className="block text-[10px] font-bold uppercase text-muted-foreground">Awarded points</span><strong className="mt-1 block text-foreground">{record.earned_points_override === null ? 'Normal calculation' : Number(record.earned_points_override).toFixed(2)}</strong></div>
+                    <div><span className="block text-xs font-bold uppercase text-muted-foreground">Status</span><strong className="mt-1 block text-foreground">{record.attendance_status.replace('_', ' ')}</strong></div>
+                    <div><span className="block text-xs font-bold uppercase text-muted-foreground">Penalty</span><strong className="mt-1 block text-foreground">{Number(record.late_penalty_percent)}%</strong></div>
+                    <div><span className="block text-xs font-bold uppercase text-muted-foreground">Normal points</span><strong className="mt-1 block text-foreground">{(record.attendance_status === 'late' ? maximum * (1 - Number(record.late_penalty_percent) / 100) : maximum).toFixed(2)}</strong></div>
+                    <div><span className="block text-xs font-bold uppercase text-muted-foreground">Awarded points</span><strong className="mt-1 block text-foreground">{record.earned_points_override === null ? 'Normal calculation' : Number(record.earned_points_override).toFixed(2)}</strong></div>
                   </div>
                 )}
 
                 {recordHistory.length > 0 && (
                   <div className="border-t border-border bg-slate-50 px-4 py-3">
-                    <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase text-muted-foreground"><History className="h-3.5 w-3.5" /> Correction history</div>
+                    <div className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase text-muted-foreground"><History className="h-3.5 w-3.5" /> Correction history</div>
                     <div className="space-y-2">
                       {recordHistory.map((correction) => (
                         <div key={correction.id} className="flex flex-col justify-between gap-1 text-xs sm:flex-row">

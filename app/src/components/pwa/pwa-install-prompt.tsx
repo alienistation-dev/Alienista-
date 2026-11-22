@@ -85,13 +85,13 @@ export function PwaInstallPrompt() {
   };
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:max-w-sm z-[60] bg-white border border-[#C2E0CC] rounded-2xl shadow-xl p-3 flex items-center gap-3" role="dialog" aria-label="Install Alienista">
-      <Download className="w-5 h-5 text-[#2D6A4F] shrink-0" />
+    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:max-w-sm z-[60] bg-white border border-primary/25 rounded-2xl shadow-xl p-3 flex items-center gap-3" role="dialog" aria-label="Install Alienista">
+      <Download className="w-5 h-5 text-primary shrink-0" />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-bold text-slate-900">Install Alienista</p>
         <p className="text-xs text-slate-500">Add a faster shortcut to this device.</p>
       </div>
-      <button type="button" onClick={() => void install()} className="px-3 py-2 rounded-lg bg-[#2D6A4F] text-white text-xs font-bold hover:bg-[#1B4332]">Install</button>
+      <button type="button" onClick={() => void install()} className="px-3 py-2 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90">Install</button>
       <button type="button" onClick={dismiss} title="Dismiss install prompt" aria-label="Dismiss install prompt" className="p-1.5 text-slate-400 hover:text-slate-700"><X className="w-4 h-4" /></button>
     </div>
   );

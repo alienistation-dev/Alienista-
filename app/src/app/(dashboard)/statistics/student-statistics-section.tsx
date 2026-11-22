@@ -66,28 +66,28 @@ export function StudentStatisticsSection({ data }: { data: StudentStatisticsData
   };
 
   return (
-    <section className="p-5 bg-white border border-[#E5EBE5] rounded-3xl space-y-4 shadow-xs">
+    <section className="p-5 bg-white border border-border rounded-3xl space-y-4 shadow-xs">
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">{error}</div>}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <h2 className="text-sm font-bold text-slate-900">Student Attendance Records ({total})</h2>
         <div className="flex flex-wrap items-center gap-2">
           <label className="relative">
             <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
-            <input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search students" className="w-44 rounded-xl border border-[#E5EBE5] bg-[#F8FAF9] py-1.5 pl-8 pr-3 text-xs text-slate-900 focus:border-[#2D6A4F] focus:outline-none" />
+            <input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search students" className="w-44 rounded-xl border border-border bg-muted py-1.5 pl-8 pr-3 text-xs text-slate-900 focus:border-primary focus:outline-none" />
           </label>
-          <select value={yearFilter} onChange={(event) => { setYearFilter(event.target.value); setPage(1); }} aria-label="Filter by year level" className="bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-1.5 text-xs text-slate-900 font-medium focus:outline-none focus:border-[#2D6A4F]">
+          <select value={yearFilter} onChange={(event) => { setYearFilter(event.target.value); setPage(1); }} aria-label="Filter by year level" className="bg-muted border border-border rounded-xl px-3 py-1.5 text-xs text-slate-900 font-medium focus:outline-none focus:border-primary">
             <option value="All">All Years</option><option value="1st Year">1st Year</option><option value="2nd Year">2nd Year</option><option value="3rd Year">3rd Year</option><option value="4th Year">4th Year</option><option value="Alumni">Alumni</option>
           </select>
-          <button onClick={() => window.print()} className="px-3.5 py-1.5 bg-[#F8FAF9] border border-[#E5EBE5] hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-700 flex items-center gap-1.5 transition-colors"><Printer className="w-3.5 h-3.5 text-slate-500" /><span>Print Report</span></button>
-          <button disabled={isPending} onClick={handleExportCsv} className="px-3.5 py-1.5 bg-[#2D6A4F] hover:bg-[#1B4332] rounded-xl text-xs font-bold text-white flex items-center gap-1.5 transition-colors shadow-xs disabled:opacity-50"><Download className="w-3.5 h-3.5" /><span>Export CSV</span></button>
+          <button onClick={() => window.print()} className="px-3.5 py-1.5 bg-muted border border-border hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-700 flex items-center gap-1.5 transition-colors"><Printer className="w-3.5 h-3.5 text-slate-500" /><span>Print Report</span></button>
+          <button disabled={isPending} onClick={handleExportCsv} className="px-3.5 py-1.5 bg-primary hover:bg-primary/90 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 transition-colors shadow-xs disabled:opacity-50"><Download className="w-3.5 h-3.5" /><span>Export CSV</span></button>
         </div>
       </div>
-      <div className="border border-[#E5EBE5] rounded-2xl overflow-hidden overflow-x-auto">
+      <div className="border border-border rounded-2xl overflow-hidden overflow-x-auto">
         <table className="w-full min-w-[640px] text-left text-xs">
-          <thead className="bg-[#F8FAF9] text-slate-600"><tr><th className="py-3 px-4 font-bold uppercase text-[10px] text-[#2D6A4F]">UID</th><th className="py-3 px-4 font-bold uppercase text-[10px]">Full Name</th><th className="py-3 px-4 font-bold uppercase text-[10px]">Year</th><th className="py-3 px-4 font-bold uppercase text-[10px] text-right">Events Attended</th><th className="py-3 px-4 font-bold uppercase text-[10px] text-right">Attendance Rate</th></tr></thead>
-          <tbody className="divide-y divide-[#E5EBE5] text-slate-700">
+          <thead className="bg-muted text-slate-600"><tr><th className="py-3 px-4 font-bold uppercase text-xs text-primary">UID</th><th className="py-3 px-4 font-bold uppercase text-xs">Full Name</th><th className="py-3 px-4 font-bold uppercase text-xs">Year</th><th className="py-3 px-4 font-bold uppercase text-xs text-right">Events Attended</th><th className="py-3 px-4 font-bold uppercase text-xs text-right">Attendance Rate</th></tr></thead>
+          <tbody className="divide-y divide-border text-slate-700">
             {students.map((student) => (
-              <tr key={student.uid} className="hover:bg-[#F8FAF9]"><td className="py-2.5 px-4 font-mono font-bold text-[#1B4332]">{student.uid}</td><td className="py-2.5 px-4 font-bold text-slate-900">{student.name}</td><td className="py-2.5 px-4 text-slate-500 font-medium">{student.year}</td><td className="py-2.5 px-4 text-right font-mono font-semibold text-slate-900">{student.count}</td><td className="py-2.5 px-4 text-right"><span className={`inline-block font-mono font-bold px-2.5 py-0.5 rounded-full text-[10px] ${student.attendance_pct >= 75 ? 'bg-[#EBF5EE] text-[#1B4332] border border-[#C2E0CC]' : student.attendance_pct >= 50 ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>{student.attendance_pct}%</span></td></tr>
+              <tr key={student.uid} className="hover:bg-muted"><td className="py-2.5 px-4 font-mono font-bold text-primary">{student.uid}</td><td className="py-2.5 px-4 font-bold text-slate-900">{student.name}</td><td className="py-2.5 px-4 text-slate-500 font-medium">{student.year}</td><td className="py-2.5 px-4 text-right font-mono font-semibold text-slate-900">{student.count}</td><td className="py-2.5 px-4 text-right"><span className={`inline-block font-mono font-bold px-2.5 py-0.5 rounded-full text-xs ${student.attendance_pct >= 75 ? 'bg-secondary text-secondary-foreground border border-primary/25' : student.attendance_pct >= 50 ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>{student.attendance_pct}%</span></td></tr>
             ))}
           </tbody>
         </table>
@@ -96,8 +96,8 @@ export function StudentStatisticsSection({ data }: { data: StudentStatisticsData
         <div className="flex items-center justify-between text-xs font-medium text-slate-500">
           <span>Page {page} of {totalPages} ({total} total)</span>
           <div className="flex gap-1.5">
-            <button disabled={page <= 1 || isPending} onClick={() => setPage((current) => current - 1)} className="rounded-xl border border-[#E5EBE5] bg-white px-3 py-1.5 disabled:opacity-40">Prev</button>
-            <button disabled={page >= totalPages || isPending} onClick={() => setPage((current) => current + 1)} className="rounded-xl border border-[#E5EBE5] bg-white px-3 py-1.5 disabled:opacity-40">Next</button>
+            <button disabled={page <= 1 || isPending} onClick={() => setPage((current) => current - 1)} className="rounded-xl border border-border bg-white px-3 py-1.5 disabled:opacity-40">Prev</button>
+            <button disabled={page >= totalPages || isPending} onClick={() => setPage((current) => current + 1)} className="rounded-xl border border-border bg-white px-3 py-1.5 disabled:opacity-40">Next</button>
           </div>
         </div>
       )}

@@ -35,15 +35,15 @@ export function Sidebar({ user }: { user: SessionUser }) {
   const filteredNav = navItems.filter((item) => item.roles.includes(user.role));
 
   return (
-    <aside className="hidden md:flex flex-col w-64 border-r border-[#E5EBE5] bg-white shrink-0 h-screen sticky top-0 shadow-xs">
+    <aside className="hidden md:flex flex-col w-64 border-r border-border bg-white shrink-0 h-screen sticky top-0 shadow-xs">
       {/* Brand Header */}
-      <div className="h-16 px-6 flex items-center gap-3 border-b border-[#E5EBE5]">
+      <div className="h-16 px-6 flex items-center gap-3 border-b border-border">
         <div className="relative w-9 h-9 rounded-full overflow-hidden border border-emerald-800/20 shadow-xs shrink-0">
           <Image src="/icon-192.png" alt="ACS Logo" fill sizes="36px" className="object-cover" />
         </div>
         <div>
-          <div className="font-extrabold text-base text-[#1B4332] tracking-tight leading-tight">Alienista</div>
-          <div className="text-[10px] text-[#2D6A4F] font-semibold tracking-wide uppercase">ACS · Palawan State U</div>
+          <div className="font-extrabold text-base text-primary tracking-tight leading-tight">Alienista</div>
+          <div className="text-xs text-primary font-semibold tracking-wide uppercase">ACS · Palawan State U</div>
         </div>
       </div>
 
@@ -57,11 +57,11 @@ export function Sidebar({ user }: { user: SessionUser }) {
               href={item.href}
               className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                 isActive
-                  ? 'bg-[#EBF5EE] text-[#1B4332] border border-[#C2E0CC] shadow-xs'
-                  : 'text-slate-600 hover:text-[#1B4332] hover:bg-[#F4F7F4]'
+                  ? 'bg-secondary text-secondary-foreground border border-primary/25 shadow-xs'
+                  : 'text-slate-600 hover:text-primary hover:bg-muted'
               }`}
             >
-              <Icon className={`w-4 h-4 ${isActive ? 'text-[#2D6A4F]' : 'text-slate-500'}`} />
+              <Icon className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-slate-500'}`} />
               {item.label}
             </NavigationLink>
           );

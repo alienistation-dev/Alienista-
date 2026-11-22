@@ -97,19 +97,19 @@ export function BadgeCard({
   const shouldShowWallet = Boolean(walletSaveUrl || showWalletButton);
 
   return (
-    <div className="bg-white border border-[#E5EBE5] rounded-lg overflow-hidden shadow-md max-w-sm mx-auto">
-      <div className="relative aspect-[5/8] bg-[#F8FAF9] flex items-center justify-center">
+    <div className="bg-white border border-border rounded-lg overflow-hidden shadow-md max-w-sm mx-auto">
+      <div className="relative aspect-[5/8] bg-muted flex items-center justify-center">
         <BadgeArtwork badge={badge} assets={artworkAssets} />
         {renderError && <div className="absolute inset-0 flex items-center justify-center bg-white/85 px-6 text-center text-xs text-red-700">Badge rendering failed. Reload and try again.</div>}
       </div>
 
       {(showDownload || shouldShowWallet) && (
-        <div className="p-3 bg-[#F8FAF9] border-t border-[#E5EBE5] space-y-2">
+        <div className="p-3 bg-muted border-t border-border space-y-2">
           {showDownload && (
             <button
               onClick={handleDownload}
               disabled={isExporting}
-              className="w-full py-2.5 bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold rounded-lg text-xs flex items-center justify-center gap-2 transition-colors shadow-xs disabled:opacity-40 cursor-pointer"
+              className="w-full py-2.5 bg-primary hover:bg-primary/90 text-white font-bold rounded-lg text-xs flex items-center justify-center gap-2 transition-colors shadow-xs disabled:opacity-40 cursor-pointer"
             >
               {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
               <span>Download Badge PNG</span>
@@ -118,7 +118,7 @@ export function BadgeCard({
 
           {walletSaveUrl ? (
             <div className="flex justify-center p-2">
-              <a href={walletSaveUrl} target="_blank" rel="noopener noreferrer" className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#1F1F1F]">
+              <a href={walletSaveUrl} target="_blank" rel="noopener noreferrer" className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-foreground">
                 <GoogleWalletButtonArtwork />
               </a>
             </div>
@@ -129,12 +129,12 @@ export function BadgeCard({
                 onClick={handleDynamicWalletClick}
                 disabled={isPending}
                 aria-busy={isPending}
-                className="rounded-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#1F1F1F]"
+                className="rounded-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-foreground"
               >
                 <GoogleWalletButtonArtwork />
               </button>
               {isPending && (
-                <p role="status" className="mt-2 flex items-center gap-1.5 text-xs text-[#4B5563]">
+                <p role="status" className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" /> Creating your Google Wallet pass...
                 </p>
               )}
@@ -142,7 +142,7 @@ export function BadgeCard({
           ) : null}
 
           {errorMessage && (
-            <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 text-center">
+            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 text-center">
               {errorMessage}
             </p>
           )}

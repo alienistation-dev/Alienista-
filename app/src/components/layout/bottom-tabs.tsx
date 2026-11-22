@@ -23,7 +23,7 @@ export function BottomTabs() {
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-xl border-t border-[#E5EBE5] px-2 flex items-center justify-around z-40 shadow-lg">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-xl border-t border-border px-2 flex items-center justify-around z-40 shadow-lg">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = pathname === tab.href;
@@ -35,10 +35,10 @@ export function BottomTabs() {
               href={tab.href}
               className="flex flex-col items-center justify-center -mt-5"
             >
-              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#2D6A4F] to-[#40916C] text-white flex items-center justify-center shadow-lg shadow-emerald-900/20 border-2 border-white">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-primary to-primary/80 text-white flex items-center justify-center shadow-lg shadow-emerald-900/20 border-2 border-white">
                 <Icon className="w-6 h-6" />
               </div>
-              <span className="text-[10px] font-bold text-[#1B4332] mt-1">{tab.label}</span>
+              <span className="text-xs font-bold text-primary mt-1">{tab.label}</span>
             </NavigationLink>
           );
         }
@@ -47,12 +47,12 @@ export function BottomTabs() {
           <NavigationLink
             key={tab.href}
             href={tab.href}
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-colors ${
-              isActive ? 'text-[#2D6A4F] font-bold' : 'text-slate-500 hover:text-slate-800'
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-colors ${
+              isActive ? 'text-primary font-bold' : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             <Icon className="w-5 h-5" />
-            <span className="text-[10px] font-medium mt-0.5">{tab.label}</span>
+            <span className="text-xs font-medium mt-0.5">{tab.label}</span>
           </NavigationLink>
         );
       })}

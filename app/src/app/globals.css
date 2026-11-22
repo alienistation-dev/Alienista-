@@ -7,35 +7,56 @@
   100% { transform: translateX(320%); }
 }
 
+/* Colours come from the ACS logo (public/icon-512.png): ink #080808, charcoal #383830, green #1A3822, white.
+   Green is the only accent. Red and amber stay for errors and warnings. Use these tokens, not hex values. */
 @layer base {
   :root {
-    --background: #F8FAF9;
-    --foreground: #111827;
+    --background: #F7F7F5;
+    --foreground: #080808;
     --card: #FFFFFF;
-    --card-foreground: #111827;
+    --card-foreground: #080808;
     --popover: #FFFFFF;
-    --popover-foreground: #111827;
-    --primary: #2D6A4F;
+    --popover-foreground: #080808;
+    --primary: #1A3822;
     --primary-foreground: #FFFFFF;
-    --secondary: #EBF5EE;
-    --secondary-foreground: #1B4332;
-    --muted: #F1F5F2;
-    --muted-foreground: #4B5563;
-    --accent: #D4AF37;
-    --accent-foreground: #111827;
-    --destructive: #DC2626;
+    --secondary: #EAF0EA;
+    --secondary-foreground: #1A3822;
+    --muted: #F0F0EC;
+    --muted-foreground: #383830;
+    --accent: #EAF0EA;
+    --accent-foreground: #1A3822;
+    --destructive: #B42318;
     --destructive-foreground: #FFFFFF;
-    --border: #E5EBE5;
-    --input: #E5EBE5;
-    --ring: #2D6A4F;
-    --radius: 1rem;
-
-    --forest: #2D6A4F;
-    --forest-dark: #1B4332;
-    --forest-light: #EBF5EE;
-    --gold: #D4AF37;
-    --ivory: #F8FAF9;
+    --border: #E0E2DC;
+    --input: #E0E2DC;
+    --ring: #1A3822;
+    --radius: 0.625rem;
   }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
 body {

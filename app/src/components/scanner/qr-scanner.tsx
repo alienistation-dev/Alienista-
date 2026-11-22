@@ -182,20 +182,20 @@ export function QrScannerComponent({ onScan, facingMode = 'environment', active 
   }, [active, facingMode, handleDecodedText]);
 
   return (
-    <div className="relative w-full rounded-2xl overflow-hidden bg-black aspect-square max-w-sm mx-auto border border-[#E5EBE5] flex items-center justify-center shadow-inner">
+    <div className="relative w-full rounded-2xl overflow-hidden bg-black aspect-square max-w-sm mx-auto border border-border flex items-center justify-center shadow-inner">
       <div id={containerId} className="w-full h-full" />
       {!active && (
-        <div className="absolute inset-0 bg-[#F8FAF9] flex flex-col items-center justify-center text-slate-500 text-xs p-4 text-center">
+        <div className="absolute inset-0 bg-muted flex flex-col items-center justify-center text-slate-500 text-xs p-4 text-center">
           <Camera className="w-8 h-8 text-slate-300 mb-2" />
           <span className="font-semibold text-slate-700">Camera is currently stopped.</span>
-          <span className="text-[11px] text-slate-500 mt-1">Click &quot;Start Camera&quot; to begin scanning student badges.</span>
+          <span className="text-xs text-slate-500 mt-1">Click &quot;Start Camera&quot; to begin scanning student badges.</span>
         </div>
       )}
       {errorMessage && (
         <div className="absolute inset-0 bg-white/95 p-4 flex flex-col items-center justify-center text-center text-red-600 gap-2">
           <AlertCircle className="w-7 h-7 text-red-500" />
           <p className="text-xs font-bold">Camera Access Error</p>
-          <p className="text-[11px] text-slate-600 max-w-xs">{errorMessage}</p>
+          <p className="text-xs text-slate-600 max-w-xs">{errorMessage}</p>
         </div>
       )}
     </div>

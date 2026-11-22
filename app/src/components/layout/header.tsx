@@ -42,19 +42,19 @@ export function Header({ user, academicYear = '2026-2027', semester = 'First Sem
 
   return (
     <>
-      <header className="h-16 border-b border-[#E5EBE5] bg-white/95 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs">
+      <header className="h-16 border-b border-border bg-white/95 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2.5 md:hidden">
             <div className="relative w-8 h-8 rounded-full overflow-hidden border border-emerald-700/20 shadow-xs">
               <Image src="/icon-192.png" alt="ACS Logo" fill sizes="32px" className="object-cover" />
             </div>
             <div>
-              <span className="font-extrabold text-base tracking-tight text-[#1B4332]">Alienista</span>
-              <div className="text-[9px] text-[#2D6A4F] font-semibold tracking-wide">ACS · PSU</div>
+              <span className="font-extrabold text-base tracking-tight text-primary">Alienista</span>
+              <div className="text-xs text-primary font-semibold tracking-wide">ACS · PSU</div>
             </div>
           </div>
-          <div className="hidden sm:flex items-center gap-2 text-xs text-slate-700 bg-[#EBF5EE] px-3.5 py-1.5 rounded-full border border-[#D1E7D7] font-medium">
-            <span className="w-2 h-2 rounded-full bg-[#2D6A4F] animate-pulse"></span>
+          <div className="hidden sm:flex items-center gap-2 text-xs text-slate-700 bg-secondary px-3.5 py-1.5 rounded-full border border-primary/25 font-medium">
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
             <span>{academicYear} · {semester}</span>
           </div>
         </div>
@@ -63,10 +63,10 @@ export function Header({ user, academicYear = '2026-2027', semester = 'First Sem
           {/* Connectivity Status Pill */}
           <div className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border font-medium ${
             isOnline
-              ? 'bg-[#EBF5EE] text-[#1B4332] border-[#C2E0CC]'
+              ? 'bg-secondary text-secondary-foreground border-primary/25'
               : 'bg-amber-50 text-amber-900 border-amber-200'
           }`}>
-            {isOnline ? <Wifi className="w-3.5 h-3.5 text-[#2D6A4F]" /> : <WifiOff className="w-3.5 h-3.5 text-amber-700" />}
+            {isOnline ? <Wifi className="w-3.5 h-3.5 text-primary" /> : <WifiOff className="w-3.5 h-3.5 text-amber-700" />}
             <span className="hidden xs:inline">{isOnline ? 'Online' : 'Offline'}</span>
           </div>
 
@@ -74,7 +74,7 @@ export function Header({ user, academicYear = '2026-2027', semester = 'First Sem
           <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
             <div className="text-right hidden sm:block">
               <div className="text-xs font-bold text-slate-900">{user.name}</div>
-              <div className="text-[10px] text-[#2D6A4F] uppercase tracking-wider font-semibold">{user.role}</div>
+              <div className="text-xs text-primary uppercase tracking-wider font-semibold">{user.role}</div>
             </div>
             <button
               onClick={() => setShowLogoutModal(true)}
@@ -90,7 +90,7 @@ export function Header({ user, academicYear = '2026-2027', semester = 'First Sem
       {/* Logout Confirmation Modal */}
       {showLogoutModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-[#E5EBE5] rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-white border border-border rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center gap-2.5 text-slate-900 font-bold text-base">
               <AlertTriangle className="w-5 h-5 text-amber-600" />
               <span>Log Out of Alienista?</span>

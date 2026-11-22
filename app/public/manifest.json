@@ -1,12 +1,13 @@
 {
+  "id": "/",
   "name": "Alienista - ACS Palawan",
   "short_name": "Alienista",
   "description": "Serverless attendance and QR scanning system for ACS PSU Palawan",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#0B1120",
-  "theme_color": "#D4AF37",
+  "background_color": "#FFFFFF",
+  "theme_color": "#1A3822",
   "icons": [
     {
       "src": "/icon-192.png",

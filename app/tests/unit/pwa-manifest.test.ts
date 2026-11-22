@@ -9,4 +9,8 @@ describe('PWA manifest', () => {
       expect.objectContaining({ src: '/icon-512.png', sizes: '512x512', type: 'image/png' }),
     ]));
   });
+
+  it('uses a stable id and the ACS logo colours', () => {
+    expect(manifest).toMatchObject({ id: '/', theme_color: '#1A3822', background_color: '#FFFFFF' });
+  });
 });

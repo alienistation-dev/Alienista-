@@ -264,16 +264,16 @@ export function ScannerView({ events, students, userRole, officerName, officerId
   return (
     <div className="space-y-4 max-w-4xl mx-auto">
       {/* Top Event Selection & Sync Status */}
-      <div className="p-4 bg-white border border-[#E5EBE5] rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-xs">
+      <div className="p-4 bg-white border border-border rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-xs">
         <div className="flex-1 min-w-0">
-          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-1">
             Active Event
           </label>
           <select
             value={selectedEventId}
             onChange={(e) => setSelectedEventId(e.target.value)}
             disabled={openEvents.length === 0}
-            className="w-full bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold focus:outline-none focus:border-[#2D6A4F]"
+            className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold focus:outline-none focus:border-primary"
           >
             {openEvents.length === 0 ? (
               <option>No open events currently scheduled</option>
@@ -287,8 +287,8 @@ export function ScannerView({ events, students, userRole, officerName, officerId
           </select>
         </div>
 
-        <div className="flex flex-col items-stretch sm:items-end gap-1.5 text-[11px]">
-          <div className={`flex items-center gap-1.5 font-bold ${isOnline ? 'text-[#1B4332]' : 'text-amber-800'}`}>
+        <div className="flex flex-col items-stretch sm:items-end gap-1.5 text-xs">
+          <div className={`flex items-center gap-1.5 font-bold ${isOnline ? 'text-primary' : 'text-amber-800'}`}>
             {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
             <span>{isOnline ? 'Online' : 'Offline'} · {pendingCount} pending</span>
           </div>
@@ -302,7 +302,7 @@ export function ScannerView({ events, students, userRole, officerName, officerId
           <button
             onClick={triggerSync}
             disabled={isSyncing || !isOnline}
-            className="bg-[#EBF5EE] border border-[#C2E0CC] text-[#1B4332] hover:bg-[#d8eedf] px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors self-end sm:self-center"
+            className="bg-secondary border border-primary/25 text-secondary-foreground hover:bg-primary/15 px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors self-end sm:self-center"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
             <span>Sync {pendingCount} Offline Scan{pendingCount === 1 ? '' : 's'}</span>
@@ -319,7 +319,7 @@ export function ScannerView({ events, students, userRole, officerName, officerId
           </div>
           <div className="space-y-1">
             {failures.slice(0, 3).map((failure) => (
-              <div key={failure.client_id} className="text-[11px] flex flex-col sm:flex-row sm:justify-between gap-1">
+              <div key={failure.client_id} className="text-xs flex flex-col sm:flex-row sm:justify-between gap-1">
                 <span>{failure.message}</span>
                 <span className="font-mono text-amber-800">
                   {failure.retriable ? 'Will retry' : 'Manual review required'} · attempt {failure.attempts}
@@ -336,11 +336,11 @@ export function ScannerView({ events, students, userRole, officerName, officerId
           className={`p-3 rounded-2xl border text-xs font-bold flex items-center justify-between transition-colors ${
             slotClosingSoon
               ? 'bg-amber-50 border-amber-300 text-amber-900'
-              : 'bg-[#EBF5EE] border-[#C2E0CC] text-[#1B4332]'
+              : 'bg-secondary border-primary/25 text-secondary-foreground'
           }`}
         >
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-[#2D6A4F]" />
+            <Clock className="w-4 h-4 text-primary" />
             <span>Active Window: {activeSlotText}</span>
           </div>
         </div>
@@ -349,17 +349,17 @@ export function ScannerView({ events, students, userRole, officerName, officerId
       {/* Scanner & Live Feedback Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Left Column: Camera View */}
-        <div className="p-5 bg-white border border-[#E5EBE5] rounded-3xl flex flex-col justify-between space-y-4 shadow-xs">
+        <div className="p-5 bg-white border border-border rounded-3xl flex flex-col justify-between space-y-4 shadow-xs">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-slate-900 flex items-center gap-2">
-              <Camera className="w-4 h-4 text-[#2D6A4F]" />
+              <Camera className="w-4 h-4 text-primary" />
               <span>Camera Stream</span>
             </h3>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setFacingMode((m) => (m === 'environment' ? 'user' : 'environment'))}
                 title="Switch Rear/Front Camera"
-                className="p-2 rounded-xl bg-[#F8FAF9] border border-[#E5EBE5] text-slate-600 hover:text-slate-900"
+                className="p-2 rounded-xl bg-muted border border-border text-slate-600 hover:text-slate-900"
               >
                 <SwitchCamera className="w-4 h-4" />
               </button>
@@ -368,7 +368,7 @@ export function ScannerView({ events, students, userRole, officerName, officerId
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors ${
                   cameraActive
                     ? 'bg-red-50 text-red-700 border border-red-200'
-                    : 'bg-[#2D6A4F] text-white hover:bg-[#1B4332]'
+                    : 'bg-primary text-white hover:bg-primary/90'
                 }`}
               >
                 {cameraActive ? 'Stop' : 'Start Camera'}
@@ -386,12 +386,12 @@ export function ScannerView({ events, students, userRole, officerName, officerId
               value={manualUid}
               onChange={(e) => setManualUid(e.target.value)}
               disabled={openEvents.length === 0}
-              className="flex-1 bg-[#F8FAF9] border border-[#E5EBE5] rounded-xl px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#2D6A4F]"
+              className="flex-1 bg-muted border border-border rounded-xl px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-primary"
             />
             <button
               type="submit"
               disabled={isPending || !manualUid.trim() || openEvents.length === 0}
-              className="px-4 py-2 bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-colors disabled:opacity-40"
+              className="px-4 py-2 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-colors disabled:opacity-40"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Record</span>
@@ -402,10 +402,10 @@ export function ScannerView({ events, students, userRole, officerName, officerId
         {/* Right Column: Live Status Banner & Recent Feed */}
         <div className="flex flex-col space-y-4">
           {/* Prominent Scan Feedback Banner */}
-          <div className="p-6 bg-white border border-[#E5EBE5] rounded-3xl flex flex-col items-center justify-center text-center min-h-[160px] shadow-xs">
+          <div className="p-6 bg-white border border-border rounded-3xl flex flex-col items-center justify-center text-center min-h-[160px] shadow-xs">
             {!lastScan ? (
               <div className="flex flex-col items-center gap-2 text-xs font-medium text-muted-foreground">
-                <Camera className="w-8 h-8 opacity-40 text-[#2D6A4F]" />
+                <Camera className="w-8 h-8 opacity-40 text-primary" />
                 <span>Ready to scan badge or enter student UID.</span>
               </div>
             ) : lastScan.status === 'present' ? (
@@ -415,17 +415,17 @@ export function ScannerView({ events, students, userRole, officerName, officerId
                     <img
                       src={lastScan.avatar_url}
                       alt={lastScan.name}
-                      className="w-14 h-14 rounded-2xl object-cover border-2 border-[#2D6A4F] shadow-sm"
+                      className="w-14 h-14 rounded-2xl object-cover border-2 border-primary shadow-sm"
                     />
                   ) : (
-                    <div className="w-14 h-14 rounded-2xl bg-[#EBF5EE] text-[#1B4332] border-2 border-[#C2E0CC] flex items-center justify-center font-extrabold text-base">
+                    <div className="w-14 h-14 rounded-2xl bg-secondary text-secondary-foreground border-2 border-primary/25 flex items-center justify-center font-extrabold text-base">
                       {lastScan.name?.[0] || 'S'}
                     </div>
                   )}
-                  <CheckCircle2 className="w-8 h-8 text-[#2D6A4F]" />
+                  <CheckCircle2 className="w-8 h-8 text-primary" />
                 </div>
                 <div>
-                  <div className="text-xs font-extrabold text-[#1B4332] uppercase tracking-wider">✓ Present Recorded</div>
+                  <div className="text-xs font-extrabold text-primary uppercase tracking-wider">✓ Present Recorded</div>
                   <div className="text-base font-extrabold text-slate-900">{lastScan.name}</div>
                   <div className="text-xs font-mono text-slate-500">{lastScan.uid}</div>
                 </div>
@@ -469,7 +469,7 @@ export function ScannerView({ events, students, userRole, officerName, officerId
                   <CheckCircle2 className="w-8 h-8 text-sky-600" />
                 </div>
                 <div>
-                  <div className="text-xs font-extrabold text-sky-800 uppercase tracking-wider">⚡ Saved Offline</div>
+                  <div className="text-xs font-extrabold text-sky-800 uppercase tracking-wider">Saved Offline</div>
                   <div className="text-base font-extrabold text-slate-900">{lastScan.name}</div>
                   <div className="text-xs text-slate-600 font-medium">{lastScan.detail}</div>
                 </div>
@@ -485,13 +485,13 @@ export function ScannerView({ events, students, userRole, officerName, officerId
           </div>
 
           {/* Recent Scans Session Feed */}
-          <div className="p-5 bg-white border border-[#E5EBE5] rounded-3xl flex-1 flex flex-col justify-between shadow-xs">
+          <div className="p-5 bg-white border border-border rounded-3xl flex-1 flex flex-col justify-between shadow-xs">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-xs font-bold text-slate-900">Recent Scans This Session</h4>
               {userRole === 'admin' && (
                 <button
                   onClick={() => setIsOverrideOpen(true)}
-                  className="text-[11px] text-[#2D6A4F] font-bold hover:underline flex items-center gap-1"
+                  className="text-xs text-primary font-bold hover:underline flex items-center gap-1"
                 >
                   <UserCheck className="w-3 h-3" />
                   Manual Override
@@ -504,13 +504,13 @@ export function ScannerView({ events, students, userRole, officerName, officerId
                 <div className="py-6 text-center text-xs text-muted-foreground">No scans recorded in this session yet.</div>
               ) : (
                 recentScans.map((sc, i) => (
-                  <div key={i} className="p-2.5 rounded-xl bg-[#F8FAF9] border border-[#E5EBE5] flex items-center justify-between text-xs">
+                  <div key={i} className="p-2.5 rounded-xl bg-muted border border-border flex items-center justify-between text-xs">
                     <span className="font-bold text-slate-900">{sc.name}</span>
                     <div className="flex items-center gap-2">
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                           sc.status === 'Present'
-                            ? 'bg-[#EBF5EE] text-[#1B4332] border border-[#C2E0CC]'
+                            ? 'bg-secondary text-secondary-foreground border border-primary/25'
                             : sc.status === 'Queued'
                             ? 'bg-sky-50 text-sky-800 border border-sky-200'
                             : 'bg-amber-50 text-amber-800 border border-amber-200'
@@ -518,7 +518,7 @@ export function ScannerView({ events, students, userRole, officerName, officerId
                       >
                         {sc.status}
                       </span>
-                      <span className="font-mono text-[10px] text-muted-foreground">{sc.time}</span>
+                      <span className="font-mono text-xs text-muted-foreground">{sc.time}</span>
                     </div>
                   </div>
                 ))
