@@ -8,13 +8,15 @@ import { ActionResponse, SessionUser } from '@/lib/types/actions';
 import {
   AmbiguousLoginIdentifierError,
   InvalidLoginCredentialsError,
+  LoginRateLimitedError,
   resolveLoginIdentifier,
 } from '@/lib/auth/resolve-login-identifier';
 import {
   clearLoginFailures,
-  isLoginRateLimited,
   recordLoginFailure,
 } from '@/lib/auth/rate-limit';
+
+const RATE_LIMITED_MESSAGE = 'Too many failed login attempts. Please wait 5 minutes before trying again.';
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
@@ -29,19 +31,14 @@ export async function loginAction(rawInput: unknown): Promise<ActionResponse<Ses
 
     const { identifier, password } = parsed.data;
 
-    if (await isLoginRateLimited(identifier)) {
-      return {
-        success: false,
-        error: 'Too many failed login attempts. Please wait 5 minutes before trying again.',
-      };
-    }
-
     try {
+      // Checks the rate limit before verifying anything.
       const sessionUser = await resolveLoginIdentifier(identifier, password);
       await clearLoginFailures(identifier);
       if (!sessionUser.must_change_password) await setSessionCookie(sessionUser);
       return { success: true, data: sessionUser };
     } catch (error) {
+      if (error instanceof LoginRateLimitedError) return { success: false, error: RATE_LIMITED_MESSAGE };
       if (error instanceof AmbiguousLoginIdentifierError) {
         await recordLoginFailure(identifier);
         return {
@@ -79,19 +76,13 @@ export async function changeStudentPasswordAction(rawInput: unknown): Promise<Ac
 
     const { identifier, currentPassword, newPassword } = parsed.data;
 
-    if (await isLoginRateLimited(identifier)) {
-      return {
-        success: false,
-        error: 'Too many failed login attempts. Please wait 5 minutes before trying again.',
-      };
-    }
-
-    // Same lookup and secret check as login: active accounts only, literal identifier,
+    // Same rate limit, lookup and secret check as login: active accounts only, literal identifier,
     // first-login surname default. The caller must supply the identifier; there is no session yet.
     let verified: SessionUser;
     try {
       verified = await resolveLoginIdentifier(identifier, currentPassword);
     } catch (error) {
+      if (error instanceof LoginRateLimitedError) return { success: false, error: RATE_LIMITED_MESSAGE };
       if (error instanceof AmbiguousLoginIdentifierError || error instanceof InvalidLoginCredentialsError) {
         await recordLoginFailure(identifier);
         return { success: false, error: 'Current password is incorrect.' };

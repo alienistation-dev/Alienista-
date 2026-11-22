@@ -18,21 +18,23 @@ export default async function MyAttendancePage() {
   const admin = createAdminClient();
   const orgId = await getEffectiveOrgId(user.organization_id);
 
-  const { data: attendance } = await admin
-    .from('v_attendance_details')
-    .select('*')
-    .eq('organization_id', orgId)
-    .eq('student_uid', user.uid)
-    .order('recorded_at', { ascending: false });
+  const [{ data: attendance }, { data: events }] = await Promise.all([
+    admin
+      .from('v_attendance_details')
+      .select('*')
+      .eq('organization_id', orgId)
+      .eq('student_uid', user.uid)
+      .order('recorded_at', { ascending: false }),
+    admin
+      .from('events')
+      .select('id')
+      .eq('organization_id', orgId),
+  ]);
 
-  const { data: events } = await admin
-    .from('events')
-    .select('id')
-    .eq('organization_id', orgId);
-
-  const totalEvents = Math.max(1, events?.length || 1);
-  const attendedCount = attendance?.length || 0;
-  const pct = Math.round((attendedCount / totalEvents) * 100);
+  // One row per slot scan, so count distinct events (same rule as v_statistics_student_summary).
+  const totalEvents = events?.length || 0;
+  const attendedCount = new Set((attendance || []).map((row: { event_id: string }) => row.event_id)).size;
+  const pct = totalEvents === 0 ? 0 : Math.round((attendedCount / totalEvents) * 100);
 
   return (
     <div className="space-y-6">

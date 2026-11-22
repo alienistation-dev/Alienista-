@@ -352,11 +352,14 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
           showToast(res.error, 'err');
           return;
         }
+        await loadStudentsPage(1);
+        setPage(1);
         showToast(`Imported ${res.data.imported} students! (${res.data.failed} failed)`);
-        window.location.reload();
       });
     };
     reader.readAsText(file);
+    // Clear the input so choosing the same file again still fires onChange.
+    e.target.value = '';
   };
 
   return (

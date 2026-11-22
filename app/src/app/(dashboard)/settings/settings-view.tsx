@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { GoogleWalletDesign, Officer, OrganizationSettings, SanctionPolicy } from '@/lib/types/models';
 import {
   addOfficerAction,
@@ -23,7 +24,9 @@ export function SettingsView({
   initialOfficers: Officer[];
   initialActivePolicy: SanctionPolicy | null;
 }) {
-  const [settings] = useState<OrganizationSettings>(initialSettings);
+  // Read from props, not a state copy, so router.refresh() shows the advanced term.
+  const settings = initialSettings;
+  const router = useRouter();
   const [officers, setOfficers] = useState<Officer[]>(initialOfficers);
   const [isPending, startTransition] = useTransition();
   const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
@@ -157,7 +160,7 @@ export function SettingsView({
       }
       showToast(res.data.message);
       setShowAdvanceModal(false);
-      window.location.reload();
+      router.refresh();
     });
   };
 

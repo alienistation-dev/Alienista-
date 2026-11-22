@@ -9,8 +9,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 let rows: Record<string, Array<Record<string, unknown>>> = {};
+let lookups = 0;
 
 function queryFor(table: string) {
+  lookups += 1;
   const filters: Array<(row: Record<string, unknown>) => boolean> = [];
   let rowLimit: number | undefined;
   const matchingRows = () => {
@@ -226,6 +228,45 @@ describe('identifier-based login action', () => {
     const result = await loginAction({ identifier: 'admin', password: 'admin123' });
 
     expect(result).toMatchObject({ success: false, error: 'Invalid identifier or password.' });
+  });
+
+  it('looks up the account during the rate-limit check but verifies nothing while limited', async () => {
+    rows.organization_settings = [{
+      id: 'settings-1',
+      organization_id: 'org-1',
+      admin_username: 'admin',
+      admin_password_hash: await bcrypt.hash('correct-password', 4),
+    }];
+    let finishCheck!: (limited: boolean) => void;
+    mocks.isLoginRateLimited.mockReturnValue(new Promise<boolean>((resolve) => { finishCheck = resolve; }));
+    const compare = vi.spyOn(bcrypt, 'compare');
+    lookups = 0;
+
+    const pending = loginAction({ identifier: 'admin', password: 'correct-password' });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(lookups).toBeGreaterThan(0);
+    finishCheck(true);
+
+    await expect(pending).resolves.toMatchObject({ success: false, error: expect.stringContaining('Too many') });
+    expect(compare).not.toHaveBeenCalled();
+    expect(mocks.recordLoginFailure).not.toHaveBeenCalled();
+    expect(mocks.setSessionCookie).not.toHaveBeenCalled();
+    compare.mockRestore();
+  });
+
+  it('fails closed when the rate-limit check errors', async () => {
+    rows.organization_settings = [{
+      id: 'settings-1',
+      organization_id: 'org-1',
+      admin_username: 'admin',
+      admin_password_hash: await bcrypt.hash('correct-password', 4),
+    }];
+    mocks.isLoginRateLimited.mockRejectedValue(new Error('Unable to check login rate limit.'));
+
+    const result = await loginAction({ identifier: 'admin', password: 'correct-password' });
+
+    expect(result.success).toBe(false);
+    expect(mocks.setSessionCookie).not.toHaveBeenCalled();
   });
 
   it('matches LIKE wildcards in the identifier as literal text', async () => {

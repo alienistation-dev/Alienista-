@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
 import { SessionUser } from '@/lib/types/actions';
+import { isLoginRateLimited } from '@/lib/auth/rate-limit';
 
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -36,6 +37,7 @@ type LoginCandidate =
 
 export class AmbiguousLoginIdentifierError extends Error {}
 export class InvalidLoginCredentialsError extends Error {}
+export class LoginRateLimitedError extends Error {}
 
 function buildSessionUser(
   candidate: LoginCandidate,
@@ -83,12 +85,19 @@ async function matchesSecret(candidate: LoginCandidate, secret: string): Promise
 }
 
 export async function resolveLoginIdentifier(identifier: string, secret: string): Promise<SessionUser> {
+  // The rate-limit check runs alongside the account lookup to save a round trip, but nothing about
+  // the account (ambiguity, password) is evaluated until it has returned false. A failed check throws.
+  const rateLimited = isLoginRateLimited(identifier);
   // ILIKE is only for case-insensitive matching. Escape % and _, and refuse * (PostgREST reads it as %),
   // so an identifier cannot be a pattern that picks an account or dodges the per-identifier rate limit.
-  if (identifier.includes('*')) throw new InvalidLoginCredentialsError();
+  if (identifier.includes('*')) {
+    if (await rateLimited) throw new LoginRateLimitedError();
+    throw new InvalidLoginCredentialsError();
+  }
   const normalized = identifier.trim().replace(/[\\%_]/g, '\\$&');
   const admin = createAdminClient();
-  const [adminResult, officerResult, studentNumberResult, studentUidResult] = await Promise.all([
+  const [limited, adminResult, officerResult, studentNumberResult, studentUidResult] = await Promise.all([
+    rateLimited,
     admin
       .from('organization_settings')
       .select('id, organization_id, admin_username, admin_password_hash')
@@ -113,6 +122,7 @@ export async function resolveLoginIdentifier(identifier: string, secret: string)
       .eq('status', 'Active')
       .limit(2),
   ]);
+  if (limited) throw new LoginRateLimitedError();
 
   const queryError = adminResult.error || officerResult.error || studentNumberResult.error || studentUidResult.error;
   if (queryError) throw new Error('Account lookup failed.');

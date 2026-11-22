@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { createSanctionPolicyVersionAction, toggleSanctionsAction } from '@/lib/actions/settings';
 import type { SanctionPolicy, SanctionPolicyMode } from '@/lib/types/models';
 import { Plus, Save, Scale, Trash2 } from 'lucide-react';
@@ -35,6 +36,7 @@ export function SanctionsPolicyEditor({
     : [emptyTier()]);
   const [feedback, setFeedback] = useState<{ message: string; error: boolean } | null>(null);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   const setPolicyMode = (nextMode: SanctionPolicyMode) => {
     setMode(nextMode);
@@ -71,7 +73,8 @@ export function SanctionsPolicyEditor({
         return;
       }
       setFeedback({ message: result.message || 'Policy version created.', error: false });
-      window.location.reload();
+      // The "Active" header reads initialPolicy from props; the tier drafts already hold what was saved.
+      router.refresh();
     });
   };
 
