@@ -60,24 +60,33 @@ class OfflineDatabase {
     if (!this.dbPromise) {
       this.dbPromise = new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
-        request.onupgradeneeded = (event) => {
+        request.onupgradeneeded = () => {
+          // Upgrades are additive. pending_scans and device_scan_history can hold attendance that
+          // has not synced yet, so they are never dropped; only re-downloadable caches are rebuilt.
           const db = request.result;
-          if (request.transaction && event.oldVersion < DB_VERSION) {
-            for (const storeName of Array.from(db.objectStoreNames)) db.deleteObjectStore(storeName);
+          const tx = request.transaction!;
+          const store = (name: string, options: IDBObjectStoreParameters) =>
+            db.objectStoreNames.contains(name) ? tx.objectStore(name) : db.createObjectStore(name, options);
+          const index = (target: IDBObjectStore, name: string) => {
+            if (!target.indexNames.contains(name)) target.createIndex(name, name, { unique: false });
+          };
+
+          if (db.objectStoreNames.contains('cached_events')) db.deleteObjectStore('cached_events');
+          if (db.objectStoreNames.contains(STORES.students) && tx.objectStore(STORES.students).keyPath !== 'cache_key') {
+            db.deleteObjectStore(STORES.students);
           }
 
-          const pending = db.createObjectStore(STORES.pending, { keyPath: 'client_id' });
-          pending.createIndex('organization_id', 'organization_id', { unique: false });
-          pending.createIndex('scope_key', 'scope_key', { unique: false });
+          const pending = store(STORES.pending, { keyPath: 'client_id' });
+          index(pending, 'organization_id');
+          index(pending, 'scope_key');
 
-          const history = db.createObjectStore(STORES.history, { keyPath: 'id', autoIncrement: true });
-          history.createIndex('client_id', 'client_id', { unique: false });
-          history.createIndex('organization_id', 'organization_id', { unique: false });
-          history.createIndex('scope_key', 'scope_key', { unique: false });
+          const history = store(STORES.history, { keyPath: 'id', autoIncrement: true });
+          index(history, 'client_id');
+          index(history, 'organization_id');
+          index(history, 'scope_key');
 
-          const students = db.createObjectStore(STORES.students, { keyPath: 'cache_key' });
-          students.createIndex('scope_key', 'scope_key', { unique: false });
-          db.createObjectStore(STORES.metadata, { keyPath: 'key' });
+          index(store(STORES.students, { keyPath: 'cache_key' }), 'scope_key');
+          store(STORES.metadata, { keyPath: 'key' });
         };
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);

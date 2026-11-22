@@ -4,13 +4,14 @@ import { verifySession } from '@/lib/session';
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow static files, favicon, manifest, sw.js
+  // Allow static files, favicon, manifest, sw.js and the service worker's offline page
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
     pathname === '/favicon.ico' ||
     pathname === '/manifest.json' ||
-    pathname === '/sw.js'
+    pathname === '/sw.js' ||
+    pathname === '/offline.html'
   ) {
     return NextResponse.next();
   }
