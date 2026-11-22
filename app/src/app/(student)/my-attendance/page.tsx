@@ -21,6 +21,7 @@ export default async function MyAttendancePage() {
   const { data: attendance } = await admin
     .from('v_attendance_details')
     .select('*')
+    .eq('organization_id', orgId)
     .eq('student_uid', user.uid)
     .order('recorded_at', { ascending: false });
 

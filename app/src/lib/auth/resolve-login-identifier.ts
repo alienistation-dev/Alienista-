@@ -83,7 +83,10 @@ async function matchesSecret(candidate: LoginCandidate, secret: string): Promise
 }
 
 export async function resolveLoginIdentifier(identifier: string, secret: string): Promise<SessionUser> {
-  const normalized = identifier.trim();
+  // ILIKE is only for case-insensitive matching. Escape % and _, and refuse * (PostgREST reads it as %),
+  // so an identifier cannot be a pattern that picks an account or dodges the per-identifier rate limit.
+  if (identifier.includes('*')) throw new InvalidLoginCredentialsError();
+  const normalized = identifier.trim().replace(/[\\%_]/g, '\\$&');
   const admin = createAdminClient();
   const [adminResult, officerResult, studentNumberResult, studentUidResult] = await Promise.all([
     admin

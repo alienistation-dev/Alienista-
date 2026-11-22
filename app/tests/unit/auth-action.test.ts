@@ -25,9 +25,17 @@ function queryFor(table: string) {
       return query;
     },
     ilike: (column: string, value: string) => {
-      filters.push((row) => String(row[column] ?? '').toLowerCase() === value.toLowerCase());
+      // PostgREST ILIKE: * and % match any run, _ matches one character, backslash escapes.
+      const source = value.replace(/\\(.)|([*%])|(_)|([^\\*%_])/g, (_m, escaped, many, one, plain) => {
+        const literal = escaped ?? plain;
+        if (literal !== undefined) return literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return many ? '.*' : one ? '.' : '';
+      });
+      const pattern = new RegExp(`^${source}$`, 'i');
+      filters.push((row) => pattern.test(String(row[column] ?? '')));
       return query;
     },
+    update: () => query,
     eq: (column: string, value: unknown) => {
       filters.push((row) => row[column] === value);
       return query;
@@ -58,7 +66,21 @@ vi.mock('@/lib/auth/rate-limit', () => ({
   isLoginRateLimited: mocks.isLoginRateLimited,
 }));
 
-import { loginAction } from '@/lib/actions/auth';
+import { changeStudentPasswordAction, loginAction } from '@/lib/actions/auth';
+
+async function firstLoginStudent(status = 'Active') {
+  return {
+    id: 'student-1',
+    organization_id: 'org-1',
+    uid: 'ST-001',
+    student_number: '2026-0001',
+    full_name: 'Ada Lovelace',
+    last_name: 'Lovelace',
+    password_hash: null,
+    is_first_login: true,
+    status,
+  };
+}
 
 describe('identifier-based login action', () => {
   beforeEach(() => {
@@ -204,5 +226,55 @@ describe('identifier-based login action', () => {
     const result = await loginAction({ identifier: 'admin', password: 'admin123' });
 
     expect(result).toMatchObject({ success: false, error: 'Invalid identifier or password.' });
+  });
+
+  it('matches LIKE wildcards in the identifier as literal text', async () => {
+    rows.students = [await firstLoginStudent()];
+
+    for (const identifier of ['2026-%', '2026-000_', 'ST-*']) {
+      const result = await loginAction({ identifier, password: 'lovelace' });
+      expect(result).toMatchObject({ success: false, error: 'Invalid identifier or password.' });
+    }
+    expect(mocks.setSessionCookie).not.toHaveBeenCalled();
+  });
+});
+
+describe('student password change action', () => {
+  const change = (identifier = '2026-0001', currentPassword = 'LOVELACE') =>
+    changeStudentPasswordAction({ identifier, currentPassword, newPassword: 'a-new-private-pass', confirmPassword: 'a-new-private-pass' });
+
+  beforeEach(() => {
+    rows = { organization_settings: [], officers: [], students: [] };
+    mocks.setSessionCookie.mockClear();
+    mocks.recordLoginFailure.mockClear();
+    mocks.isLoginRateLimited.mockReset().mockResolvedValue(false);
+  });
+
+  it('changes the password and signs in an active student', async () => {
+    rows.students = [await firstLoginStudent()];
+    await expect(change()).resolves.toMatchObject({ success: true });
+    expect(mocks.setSessionCookie).toHaveBeenCalledOnce();
+  });
+
+  it('refuses an inactive student', async () => {
+    rows.students = [await firstLoginStudent('Inactive')];
+    await expect(change()).resolves.toMatchObject({ success: false });
+    expect(mocks.setSessionCookie).not.toHaveBeenCalled();
+  });
+
+  it('shares the login rate limit', async () => {
+    rows.students = [await firstLoginStudent()];
+    await expect(change('2026-0001', 'WRONG')).resolves.toMatchObject({ success: false });
+    expect(mocks.recordLoginFailure).toHaveBeenCalledWith('2026-0001');
+
+    mocks.isLoginRateLimited.mockResolvedValue(true);
+    await expect(change()).resolves.toMatchObject({ success: false });
+    expect(mocks.setSessionCookie).not.toHaveBeenCalled();
+  });
+
+  it('does not let an officer identifier change a password', async () => {
+    rows.officers = [{ id: 'officer-1', organization_id: 'org-1', name: 'Officer One', pin_hash: await bcrypt.hash('1234', 4), status: 'Active' }];
+    await expect(change('Officer One', '1234')).resolves.toMatchObject({ success: false });
+    expect(mocks.setSessionCookie).not.toHaveBeenCalled();
   });
 });

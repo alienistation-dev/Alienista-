@@ -1,7 +1,7 @@
 'use server';
 
 import bcrypt from 'bcryptjs';
-import { createAdminClient, getEffectiveOrgId } from '@/lib/supabase/admin';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { setSessionCookie, clearSessionCookie } from '@/lib/session';
 import { loginSchema, changePasswordSchema } from '@/lib/validations/auth';
 import { ActionResponse, SessionUser } from '@/lib/types/actions';
@@ -78,52 +78,37 @@ export async function changeStudentPasswordAction(rawInput: unknown): Promise<Ac
     }
 
     const { identifier, currentPassword, newPassword } = parsed.data;
-    const admin = createAdminClient();
-    const cleanIdentifier = identifier.trim();
 
-    // Resolve the student by identifier (student number or UID).
-    // We do NOT fall back to the session here — the caller must always supply
-    // the identifier so we can verify the current password against it.
-    let { data: student } = await admin
-      .from('students')
-      .select('id, organization_id, last_name, first_name, full_name, uid, student_number, password_hash, is_first_login')
-      .ilike('student_number', cleanIdentifier)
-      .maybeSingle();
-
-    if (!student) {
-      const { data: byUid } = await admin
-        .from('students')
-        .select('id, organization_id, last_name, first_name, full_name, uid, student_number, password_hash, is_first_login')
-        .ilike('uid', cleanIdentifier)
-        .maybeSingle();
-      student = byUid;
+    if (await isLoginRateLimited(identifier)) {
+      return {
+        success: false,
+        error: 'Too many failed login attempts. Please wait 5 minutes before trying again.',
+      };
     }
 
-    if (!student) {
-      return { success: false, error: 'Student record not found.' };
+    // Same lookup and secret check as login: active accounts only, literal identifier,
+    // first-login surname default. The caller must supply the identifier; there is no session yet.
+    let verified: SessionUser;
+    try {
+      verified = await resolveLoginIdentifier(identifier, currentPassword);
+    } catch (error) {
+      if (error instanceof AmbiguousLoginIdentifierError || error instanceof InvalidLoginCredentialsError) {
+        await recordLoginFailure(identifier);
+        return { success: false, error: 'Current password is incorrect.' };
+      }
+      throw error;
     }
-
-    // Verify the caller knows the current password before allowing the change.
-    // For first-login accounts without a hash, verify against the default
-    // (last name uppercased) so the first-login flow still works.
-    let currentPasswordValid = false;
-    if (student.password_hash) {
-      currentPasswordValid = await bcrypt.compare(currentPassword, student.password_hash);
-    } else if (student.is_first_login) {
-      const defaultPass = (student.last_name || student.full_name?.split(' ').pop() || '').trim().toUpperCase();
-      currentPasswordValid = currentPassword.trim().toUpperCase() === defaultPass;
-    }
-
-    if (!currentPasswordValid) {
+    if (verified.role !== 'student') {
       return { success: false, error: 'Current password is incorrect.' };
     }
+    await clearLoginFailures(identifier);
 
     const newHash = await bcrypt.hash(newPassword, 10);
 
-    const { error: updateError } = await admin
+    const { error: updateError } = await createAdminClient()
       .from('students')
       .update({ password_hash: newHash, is_first_login: false })
-      .eq('id', student.id);
+      .eq('id', verified.id);
 
     if (updateError) {
       console.error('Database update error:', updateError);
@@ -131,21 +116,7 @@ export async function changeStudentPasswordAction(rawInput: unknown): Promise<Ac
     }
 
     // Issue a full session now that the password is confirmed changed.
-    const orgId = await getEffectiveOrgId(student.organization_id);
-    const sessionUser: SessionUser = {
-      id: student.id,
-      subject_id: student.id,
-      subject_type: 'student',
-      organization_id: orgId,
-      role: 'student',
-      name: student.full_name,
-      issued_at: Date.now(),
-      expires_at: Date.now() + 7 * 24 * 60 * 60 * 1000,
-      uid: student.uid,
-      student_number: student.student_number,
-      must_change_password: false,
-    };
-    await setSessionCookie(sessionUser);
+    await setSessionCookie({ ...verified, must_change_password: false });
 
     return { success: true, data: undefined, message: 'Password updated successfully!' };
   } catch (error: unknown) {

@@ -77,6 +77,13 @@ describe('statistics route loaders', () => {
     await expect(getStudentStatisticsAction()).resolves.toEqual({ success: false, error: 'student summary unavailable' });
   });
 
+  it('refuses student sessions', async () => {
+    mocks.getRouteRequestContext.mockResolvedValue({ organizationId: 'org-1', admin: { from: mocks.from }, user: { role: 'student' } });
+    await expect(getStatisticsOverviewAction()).resolves.toEqual({ success: false, error: 'Unauthorized' });
+    await expect(getStudentStatisticsAction()).resolves.toEqual({ success: false, error: 'Unauthorized' });
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
   it('performs fresh overview reads for separate action calls', async () => {
     const tables: string[] = [];
     mocks.from.mockImplementation((table: string) => {

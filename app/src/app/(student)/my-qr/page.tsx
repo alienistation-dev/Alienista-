@@ -2,7 +2,7 @@ import React from 'react';
 import { getSessionUser } from '@/lib/session';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { BadgeCard } from '@/components/badges/badge-card';
-import { Student } from '@/lib/types/models';
+import type { BadgeStudent } from '@/lib/types/models';
 import { redirect } from 'next/navigation';
 
 export default async function MyQrPage() {
@@ -13,8 +13,10 @@ export default async function MyQrPage() {
   const [{ data: student }, { data: settings }] = await Promise.all([
     admin
       .from('students')
-      .select('*')
+      // BadgeCard is a client component; never send password_hash to the browser.
+      .select('id, uid, student_number, full_name, course, year, section, status, avatar_url')
       .eq('id', user.id)
+      .eq('organization_id', user.organization_id)
       .maybeSingle(),
     admin
       .from('organization_settings')
@@ -43,7 +45,7 @@ export default async function MyQrPage() {
       </div>
 
       <BadgeCard
-        student={student as Student}
+        student={student as BadgeStudent}
         showWalletButton={isWalletEnabled}
       />
     </div>

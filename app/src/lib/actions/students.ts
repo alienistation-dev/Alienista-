@@ -141,7 +141,7 @@ export async function createStudentAction(rawInput: unknown): Promise<ActionResp
       password_hash: passHash,
       is_first_login: true,
     })
-    .select()
+    .select(STUDENT_PROJECTION)
     .single();
 
   if (error) {
