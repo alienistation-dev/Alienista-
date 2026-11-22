@@ -19,8 +19,8 @@ Code (details in Phases below):
 - [x] 9. Screen review at 360 px, production build, local data: 11 screens, admin and student
 
 Follow-ups found in phases 6–9:
-- [ ] Owner decision: printed badge and Wallet pass still use the old green and gold (`lib/badges/badge.ts`, `google-wallet.ts` background). Change to ACS colours?
-- [ ] Semester advance sets 4th years Inactive in SQL, but their Wallet passes stay ACTIVE
+- [x] Printed badge and Wallet pass use ACS colours (`2ab6d92`)
+- [ ] Deferred by owner 2026-11-23 ("Maybe defer it for now. Or maybe some kind of a souvenir?"): semester advance sets 4th years Inactive in SQL, but their Wallet passes stay ACTIVE. Possible design: keep the pass as an alumni keepsake that no scanner accepts
 - [ ] Wallet calls not yet tested against the real Google API (needs a test issuer)
 - [ ] Statistics student table is wider than a phone; it scrolls, but the Year column starts off-screen
 - [ ] Uppercase tracked labels on stat cards and table headers (style drift, low)
@@ -28,9 +28,9 @@ Follow-ups found in phases 6–9:
 Owner:
 - [x] Rotate `SESSION_SECRET` in Vercel Production (owner, 2026-11-23)
 - [x] Production database catch-up (2026-11-23), see "Production database" below
-- [ ] Set Vercel function region to `syd1` — deferred by owner 2026-11-23 ("for now, maybe no")
+- [ ] Set Vercel function region to `syd1` — deferred by owner 2026-11-23 ("for now, maybe no"; again "No for now.")
 - [x] Merge into `dev` (fast-forward; now `1af1615`, 2026-11-23). Owner: "the feat should be in dev for now (but once im ok with it, then go to main"
-- [ ] Merge `dev` to `main` and deploy — after owner approval
+- [x] Merge `dev` to `main` (fast-forward to `2ab6d92`, 2026-11-23). Owner: "Go." Tests 201/201, `tsc` and build passed first
 
 Parked:
 - [ ] My Clearance (needs CSG consent and an owner decision)
