@@ -235,67 +235,29 @@ export async function deleteOfficerAction(officerId: string): Promise<ActionResp
   return { success: true, data: undefined };
 }
 
-export async function advanceSemesterAction(): Promise<ActionResponse<{ message: string }>> {
+export async function advanceSemesterAction(
+  expected: Pick<OrganizationSettings, 'academic_year' | 'semester'>
+): Promise<ActionResponse<{ message: string }>> {
   const user = await getSessionUser();
   if (!user || user.role !== 'admin') return { success: false, error: 'Unauthorized.' };
-
-  const orgId = await getEffectiveOrgId(user.organization_id);
-  const admin = createAdminClient();
-
-  const { data: settings } = await admin
-    .from('organization_settings')
-    .select('*')
-    .eq('organization_id', orgId)
-    .maybeSingle();
-
-  if (!settings) return { success: false, error: 'Settings not found.' };
-
-  // If First Semester -> Advance to Second Semester (No student promotions)
-  if (settings.semester === 'First Semester') {
-    await admin
-      .from('organization_settings')
-      .update({ semester: 'Second Semester' })
-      .eq('id', settings.id);
-
-    revalidatePath('/settings');
-    return { success: true, data: { message: 'Advanced to Second Semester. Student year levels maintained.' } };
+  if (!/^\d{4}-\d{4}$/.test(expected?.academic_year ?? '') || !['First Semester', 'Second Semester'].includes(expected?.semester)) {
+    return { success: false, error: 'Reload settings before advancing the academic term.' };
   }
 
-  // If Second Semester -> Roll over to next Academic Year & Promote Active Students
-  const [y1, y2] = settings.academic_year.split('-').map(Number);
-  const nextAcademicYear = `${(y1 || 2026) + 1}-${(y2 || 2027) + 1}`;
-
-  // Promote all active students by year level in 4 batched UPDATE queries.
-  // Running them in parallel is safe: each targets a distinct year value,
-  // so there is no overlap. If the process crashes mid-way the worst case is
-  // that some year levels are promoted and some are not — re-running is safe
-  // because each query is idempotent (1st Years → 2nd Year; already-2nd-Years
-  // are unaffected). The final settings update is done last so the term_key
-  // on new events always reflects the committed promotions.
-  await Promise.all([
-    admin.from('students').update({ year: '2nd Year', status: 'Active' })
-      .eq('organization_id', orgId).eq('status', 'Active').eq('year', '1st Year'),
-    admin.from('students').update({ year: '3rd Year', status: 'Active' })
-      .eq('organization_id', orgId).eq('status', 'Active').eq('year', '2nd Year'),
-    admin.from('students').update({ year: '4th Year', status: 'Active' })
-      .eq('organization_id', orgId).eq('status', 'Active').eq('year', '3rd Year'),
-    admin.from('students').update({ year: '4th Year', status: 'Inactive' })
-      .eq('organization_id', orgId).eq('status', 'Active').eq('year', '4th Year'),
-  ]);
-
-  await admin
-    .from('organization_settings')
-    .update({
-      academic_year: nextAcademicYear,
-      semester: 'First Semester',
-    })
-    .eq('id', settings.id);
+  // The RPC locks settings, checks the term the admin saw, and promotes in one statement,
+  // so a double submit or concurrent request cannot advance or promote twice.
+  const orgId = await getEffectiveOrgId(user.organization_id);
+  const { data, error } = await createAdminClient().rpc('advance_organization_semester', {
+    p_organization_id: orgId,
+    p_expected_academic_year: expected.academic_year,
+    p_expected_semester: expected.semester,
+  });
+  if (error || !data) return { success: false, error: error?.message || 'Academic term could not be advanced.' };
 
   revalidatePath('/settings');
-  return {
-    success: true,
-    data: { message: `Started Academic Year ${nextAcademicYear} (First Semester). Students promoted successfully!` },
-  };
+  revalidatePath('/students');
+  revalidatePath('/assessments');
+  return { success: true, data: data as { message: string } };
 }
 
 export async function toggleGoogleWalletAction(enabled: boolean): Promise<ActionResponse> {

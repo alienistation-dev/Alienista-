@@ -150,7 +150,7 @@ export function SettingsView({
 
   const handleConfirmAdvanceSemester = () => {
     startTransition(async () => {
-      const res = await advanceSemesterAction();
+      const res = await advanceSemesterAction({ academic_year: settings.academic_year, semester: settings.semester });
       if (!res.success) {
         showToast(res.error, 'err');
         return;
