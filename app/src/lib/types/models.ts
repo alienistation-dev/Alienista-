@@ -72,6 +72,7 @@ export interface SemesterAssessment {
   finalized_by: string | null;
   created_at: string;
   updated_at: string;
+  student?: { full_name: string; uid: string } | null;
 }
 
 export interface LatePolicy {

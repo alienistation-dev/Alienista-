@@ -48,7 +48,7 @@ export default async function MyAttendancePage() {
         <div className="p-5 bg-white border border-border rounded-3xl shadow-xs">
           <span className="text-xs text-slate-500 uppercase font-bold block mb-1">Attended</span>
           <span className="text-2xl font-extrabold text-primary">{attendedCount}</span>
-          <span className="text-xs text-slate-400 font-medium block mt-0.5">out of {totalEvents} events</span>
+          <span className="text-xs text-slate-400 font-medium block mt-0.5">out of {totalEvents} {totalEvents === 1 ? 'event' : 'events'}</span>
         </div>
         <div className="p-5 bg-white border border-border rounded-3xl shadow-xs">
           <span className="text-xs text-slate-500 uppercase font-bold block mb-1">Rate</span>

@@ -161,7 +161,7 @@ export async function getSemesterAssessmentsAction(termKey: string): Promise<Act
   try { user = await requireRole('admin', 'officer'); } catch { return { success: false, error: 'Unauthorized.' }; }
   const orgId = await getEffectiveOrgId(user.organization_id);
   const admin = createAdminClient();
-  const { data, error } = await admin.from('semester_assessments').select('*')
+  const { data, error } = await admin.from('semester_assessments').select('*, student:students(full_name, uid)')
     .eq('organization_id', orgId).eq('term_key', termKey).order('student_id');
   if (error) return { success: false, error: error.message };
   return { success: true, data: (data || []) as SemesterAssessment[] };

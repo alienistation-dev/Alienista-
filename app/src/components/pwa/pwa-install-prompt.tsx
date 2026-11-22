@@ -85,7 +85,8 @@ export function PwaInstallPrompt() {
   };
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:max-w-sm z-[60] bg-white border border-primary/25 rounded-2xl shadow-xl p-3 flex items-center gap-3" role="dialog" aria-label="Install Alienista">
+    // On phones, sit above the bottom tab bar (h-16) instead of covering the navigation.
+    <div className="fixed bottom-4 max-md:[body:has([data-bottom-tabs])_&]:bottom-20 left-4 right-4 sm:left-auto sm:max-w-sm z-[60] bg-white border border-primary/25 rounded-2xl shadow-xl p-3 flex items-center gap-3" role="dialog" aria-label="Install Alienista">
       <Download className="w-5 h-5 text-primary shrink-0" />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-bold text-slate-900">Install Alienista</p>

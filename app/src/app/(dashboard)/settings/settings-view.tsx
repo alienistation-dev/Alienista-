@@ -371,8 +371,8 @@ export function SettingsView({
         </form>
 
         {/* Officers Table */}
-        <div className="border border-border rounded-2xl overflow-hidden">
-          <table className="w-full text-left text-xs">
+        <div className="border border-border rounded-2xl overflow-x-auto">
+          <table className="w-full min-w-[22rem] text-left text-xs">
             <thead className="bg-muted text-slate-600">
               <tr>
                 <th className="py-2.5 px-4 font-bold uppercase text-xs">Officer Name</th>

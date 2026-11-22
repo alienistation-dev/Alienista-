@@ -13,16 +13,24 @@ Code (details in Phases below):
 - [x] 3. Speed, part 1 (browser check still open)
 - [x] 4. Offline shell
 - [x] 5. Offline replay
-- [ ] 6. Wallet lifecycle: official button, ID-only save link, pass state on deactivation
-- [ ] 7. UI tokens and ACS colours
-- [ ] 8. Speed, part 2: region, remaining reloads, login latency, badge wait
-- [ ] 9. Screen-by-screen UI and Wallet UI review
+- [x] 6. Wallet lifecycle: official button, ID-only save link, pass state on deactivation (mocked API only)
+- [x] 7. UI tokens and ACS colours (0 hex colours left in `.tsx`)
+- [x] 8. Speed, part 2: reloads, login round trip, badge wait, fonts (region deferred)
+- [x] 9. Screen review at 360 px, production build, local data: 11 screens, admin and student
+
+Follow-ups found in phases 6–9:
+- [ ] Owner decision: printed badge and Wallet pass still use the old green and gold (`lib/badges/badge.ts`, `google-wallet.ts` background). Change to ACS colours?
+- [ ] Semester advance sets 4th years Inactive in SQL, but their Wallet passes stay ACTIVE
+- [ ] Wallet calls not yet tested against the real Google API (needs a test issuer)
+- [ ] Statistics student table is wider than a phone; it scrolls, but the Year column starts off-screen
+- [ ] Uppercase tracked labels on stat cards and table headers (style drift, low)
 
 Owner:
-- [ ] Rotate `SESSION_SECRET` in Vercel Production (before deploying)
+- [x] Rotate `SESSION_SECRET` in Vercel Production (owner, 2026-11-23)
 - [ ] Repair and push migrations (`migration list --linked`, `repair` if needed, `db push`)
-- [ ] Set Vercel function region to `syd1`
-- [ ] Approve merge of `feat/sprint-reconcile` to `main` and deploy
+- [ ] Set Vercel function region to `syd1` — deferred by owner 2026-11-23 ("for now, maybe no")
+- [x] Merge into `dev` (fast-forward to `4077695`, 2026-11-23). Owner: "the feat should be in dev for now (but once im ok with it, then go to main"
+- [ ] Merge `dev` to `main` and deploy — after owner approval
 
 Parked:
 - [ ] My Clearance (needs CSG consent and an owner decision)

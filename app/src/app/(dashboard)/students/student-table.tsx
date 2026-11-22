@@ -378,8 +378,8 @@ export function StudentTable({ initialPage, userRole }: StudentTableProps) {
 
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-        <div className="flex flex-1 gap-2 items-center">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-1 flex-wrap gap-2 items-center">
+          <div className="relative basis-full sm:basis-auto flex-1 max-w-sm">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <input
               type="text"

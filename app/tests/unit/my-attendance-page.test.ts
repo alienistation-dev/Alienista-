@@ -48,7 +48,7 @@ describe('my attendance page', () => {
 
   it('counts an event with two slot scans once', async () => {
     const html = await render([record('a1', 'event-1'), record('a2', 'event-1')], [{ id: 'event-1' }]);
-    expect(html).toContain('out of 1 events');
+    expect(html).toContain('out of 1 event<');
     expect(html).toContain('>100%<');
   });
 

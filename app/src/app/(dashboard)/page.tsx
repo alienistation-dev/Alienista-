@@ -27,7 +27,6 @@ export default async function DashboardPage() {
       {/* Metric Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white border border-border rounded-2xl p-4 sm:p-5 relative overflow-hidden shadow-xs">
-          <div className="w-1.5 h-full bg-primary absolute left-0 top-0"></div>
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-bold uppercase tracking-wider">Total Students</span>
             <Users className="w-4 h-4 text-primary" />
@@ -37,7 +36,6 @@ export default async function DashboardPage() {
         </div>
 
         <div className="bg-white border border-border rounded-2xl p-4 sm:p-5 relative overflow-hidden shadow-xs">
-          <div className="w-1.5 h-full bg-primary absolute left-0 top-0"></div>
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-bold uppercase tracking-wider">Events</span>
             <Calendar className="w-4 h-4 text-primary" />
@@ -47,20 +45,18 @@ export default async function DashboardPage() {
         </div>
 
         <div className="bg-white border border-border rounded-2xl p-4 sm:p-5 relative overflow-hidden shadow-xs">
-          <div className="w-1.5 h-full bg-sky-600 absolute left-0 top-0"></div>
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-bold uppercase tracking-wider">Attendance</span>
-            <QrCode className="w-4 h-4 text-sky-600" />
+            <QrCode className="w-4 h-4 text-primary" />
           </div>
           <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">{stats.total_attendance}</div>
           <div className="text-xs text-slate-500 font-medium mt-1">Total recorded scans</div>
         </div>
 
         <div className="bg-white border border-border rounded-2xl p-4 sm:p-5 relative overflow-hidden shadow-xs">
-          <div className="w-1.5 h-full bg-emerald-600 absolute left-0 top-0"></div>
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-bold uppercase tracking-wider">Turnout Rate</span>
-            <TrendingUp className="w-4 h-4 text-emerald-600" />
+            <TrendingUp className="w-4 h-4 text-primary" />
           </div>
           <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">{stats.overall_attendance_pct}%</div>
           <div className="text-xs text-slate-500 font-medium mt-1">Average turnout rate</div>

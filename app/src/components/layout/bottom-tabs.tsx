@@ -23,7 +23,7 @@ export function BottomTabs() {
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-xl border-t border-border px-2 flex items-center justify-around z-40 shadow-lg">
+    <nav data-bottom-tabs className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-xl border-t border-border px-2 flex items-center justify-around z-40 shadow-lg">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = pathname === tab.href;
