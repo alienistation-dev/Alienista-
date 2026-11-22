@@ -52,15 +52,18 @@ function getWalletLogoUrl(student: Student): string | null {
   }
 }
 
-function getWalletHeroUrl(): string | null {
-  const configuredHero = process.env.GOOGLE_WALLET_HERO_URL?.trim();
-  if (!configuredHero) return null;
-  try {
-    const url = new URL(configuredHero);
-    return url.protocol === 'https:' ? url.toString() : null;
-  } catch {
-    return null;
+// Google fetches the hero itself, so only public HTTPS URLs work. Default: the app's own public/wallet-hero.png.
+function getWalletHeroUrl(appUrl: string): string | null {
+  for (const candidate of [process.env.GOOGLE_WALLET_HERO_URL?.trim(), `${appUrl}/wallet-hero.png`]) {
+    if (!candidate) continue;
+    try {
+      const url = new URL(candidate);
+      if (url.protocol === 'https:') return url.toString();
+    } catch {
+      // Try the next candidate.
+    }
   }
+  return null;
 }
 
 function walletObjectIds(studentId: string, config: GoogleWalletConfig) {
@@ -78,7 +81,7 @@ export function createGoogleWalletObject(student: Student, config: GoogleWalletC
 
   const { id: fullObjectId, classId: fullClassId } = walletObjectIds(student.id, config);
   const logoUrl = getWalletLogoUrl(student);
-  const heroUrl = getWalletHeroUrl();
+  const heroUrl = getWalletHeroUrl(config.appUrl.replace(/\/$/, ''));
 
   const cardTitle = process.env.GOOGLE_WALLET_CARD_TITLE?.trim() || 'Alienista';
   const subheader = process.env.GOOGLE_WALLET_SUBHEADER?.trim() || 'Student Member';

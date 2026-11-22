@@ -61,7 +61,7 @@ describe('Google Wallet Pass Generation', () => {
     );
     expect(genericObject.logo?.contentDescription.defaultValue.value).toBe('LOGO_IMAGE_DESCRIPTION');
     expect(genericObject.imageModulesData).toEqual([]);
-    expect(genericObject.heroImage).toBeUndefined();
+    expect(genericObject.heroImage?.sourceUri.uri).toBe('https://alienista.edu/wallet-hero.png');
     expect(genericObject.subheader.defaultValue.value).toBe('Student Member');
     expect(genericObject.header.defaultValue.value).toBe('Nestor Jann Asag');
     expect(genericObject.textModulesData).toEqual([
@@ -82,7 +82,7 @@ describe('Google Wallet Pass Generation', () => {
     const object = createGoogleWalletObject(mockStudent, mockConfig, 'legacy');
     expect(object.logo?.sourceUri.uri).toContain('example.com/avatar.png?v=');
     expect(object.imageModulesData).toEqual([]);
-    expect(object.heroImage).toBeUndefined();
+    expect(object.heroImage?.sourceUri.uri).toBe('https://alienista.edu/wallet-hero.png');
     expect(object.subheader.defaultValue.value).toBe('BSIT - 3rd Year');
   });
 
@@ -94,17 +94,21 @@ describe('Google Wallet Pass Generation', () => {
     expect(createGoogleWalletObject(mockStudent, mockConfig).logo?.sourceUri.uri).toBe('https://cdn.example.com/alienista.png');
   });
 
-  it('includes a configured public hero image and ignores local or invalid URLs', () => {
+  it('uses a configured public hero image and falls back to the app hero for local or invalid URLs', () => {
     process.env.GOOGLE_WALLET_HERO_URL = 'http://localhost:3000/wallet-hero.png';
-    expect(createGoogleWalletObject(mockStudent, mockConfig).heroImage).toBeUndefined();
+    expect(createGoogleWalletObject(mockStudent, mockConfig).heroImage?.sourceUri.uri).toBe('https://alienista.edu/wallet-hero.png');
 
     process.env.GOOGLE_WALLET_HERO_URL = 'not-a-url';
-    expect(createGoogleWalletObject(mockStudent, mockConfig).heroImage).toBeUndefined();
+    expect(createGoogleWalletObject(mockStudent, mockConfig).heroImage?.sourceUri.uri).toBe('https://alienista.edu/wallet-hero.png');
 
     process.env.GOOGLE_WALLET_HERO_URL = 'https://cdn.example.com/alienista-wallet-hero.png';
     expect(createGoogleWalletObject(mockStudent, mockConfig).heroImage?.sourceUri.uri).toBe(
       'https://cdn.example.com/alienista-wallet-hero.png'
     );
+  });
+
+  it('sends no hero when the app itself is not served over HTTPS', () => {
+    expect(createGoogleWalletObject(mockStudent, { ...mockConfig, appUrl: 'http://localhost:3000' }).heroImage).toBeUndefined();
   });
 
   it('signs valid RS256 JWT using node:crypto without external libraries', () => {
